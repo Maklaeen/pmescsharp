@@ -46,13 +46,27 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-await IdentitySeed.EnsureSeededAsync(app.Services, app.Configuration);
+try
+{
+    await IdentitySeed.EnsureSeededAsync(app.Services, app.Configuration);
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Seed failed.");
+}
 
 // Auto-migrate on startup
-using (var scope = app.Services.CreateScope())
+try
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Migration failed.");
 }
 
 app.Run();
