@@ -28,3 +28,6 @@ jobs:
           local-dir: ./publish/
           server-dir: /wwwroot/
           dangerous-clean-slate: true
+          exclude: |
+            **/.git*
+            **/.git*/**
