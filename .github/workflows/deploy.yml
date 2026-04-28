@@ -17,7 +17,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Publish
-        run: dotnet publish PmesCSharp/PmesCSharp.csproj -c Release -o ./publish
+        run: dotnet publish PmesCSharp.csproj -c Release -o ./publish
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
