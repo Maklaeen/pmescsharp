@@ -1,0 +1,101 @@
+@model List<PmesCSharp.Models.ProductionSchedule>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Production Schedules";
+    int page = ViewBag.Page;
+    int totalPages = ViewBag.TotalPages;
+    bool canManage = ViewBag.CanManage == true;
+}
+
+@if (TempData["Success"] is string success)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">@error</div>
+}
+
+<div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Production Schedules</h2>
+            <p class="text-sm text-gray-500 mt-1">Plan, start, and track production batches.</p>
+        </div>
+        @if (canManage)
+        {
+            <a href="/production/schedules/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Create Schedule</a>
+        }
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-separate border-spacing-y-3">
+            <thead>
+                <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                    <th class="px-6 py-4">Schedule</th>
+                    <th class="px-6 py-4">Product</th>
+                    <th class="px-6 py-4">Planned Qty</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">WO</th>
+                    <th class="px-6 py-4">QC</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="7" class="px-6 py-10 text-sm text-gray-500">No schedules found.</td></tr>
+                }
+                @foreach (var s in Model)
+                {
+                    var statusClass = s.Status switch
+                    {
+                        "planned" => "text-gray-300 bg-white/5 border-white/10",
+                        "in_progress" => "text-orange-400 bg-orange-500/10 border-orange-500/20",
+                        "completed" => "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+                        "cancelled" => "text-red-400 bg-red-500/10 border-red-500/20",
+                        _ => "text-gray-300 bg-white/5 border-white/10"
+                    };
+                    <tr class="bg-white/[0.02] hover:bg-white/[0.05] transition-colors">
+                        <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05]">
+                            <div class="text-sm font-bold text-white">#@s.Id</div>
+                            <div class="text-xs text-gray-500">@s.ScheduleDate.ToString("MMM dd, yyyy")</div>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <div class="text-sm font-semibold text-gray-200">@(s.Product?.ProductName ?? "—")</div>
+                            <div class="text-xs text-gray-500">@(s.Product?.ProductCode ?? "")</div>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <span class="text-sm font-bold text-white">@s.PlannedQuantity.ToString("N0")</span>
+                            <span class="text-xs text-gray-500">@(s.Product?.Unit ?? "pcs")</span>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border @statusClass">
+                                @s.Status.Replace("_", " ")
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <span class="text-xs text-gray-400">@s.WorkOrders.Count</span>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <span class="text-xs text-gray-400">@s.QualityChecks.Count</span>
+                        </td>
+                        <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
+                            <a href="/production/schedules/@s.Id" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="mt-6 flex items-center gap-2">
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <a href="/production/schedules?page=@i" class="px-4 py-2 text-xs font-bold rounded-xl @(i == page ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
+            }
+        </div>
+    }
+</div>

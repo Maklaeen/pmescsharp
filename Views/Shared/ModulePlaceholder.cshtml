@@ -1,0 +1,14 @@
+@{
+    Layout = "_AdminLayout";
+    var title = ViewData["Title"]?.ToString() ?? "Module";
+}
+
+<div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+    <h2 class="text-2xl font-bold text-white tracking-tight">@title</h2>
+    <p class="text-sm text-gray-500 mt-2">This page is a placeholder (ported from the Laravel flow) so the sidebar navigation works end-to-end.</p>
+
+    <div class="mt-6 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
+        <div class="text-xs font-bold text-gray-600 uppercase tracking-[0.2em]">Next</div>
+        <p class="text-sm text-gray-400 mt-2">Implement the module logic and database tables here (EF Core + controllers + views / API) while keeping the same UI.</p>
+    </div>
+</div>

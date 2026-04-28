@@ -1,0 +1,154 @@
+@model List<PmesCSharp.Models.MaterialMovement>
+@using PmesCSharp.Models
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Material Movements";
+    int page = ViewBag.Page;
+    int totalPages = ViewBag.TotalPages;
+    var materials = ViewBag.Materials as List<Material> ?? [];
+}
+
+@if (TempData["Success"] is string success)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">@error</div>
+}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h2 class="text-2xl font-bold text-white tracking-tight">Stock In / Out</h2>
+        <p class="text-sm text-gray-500 mt-1">Record inventory movements and keep stock accurate.</p>
+
+        <form method="post" action="/inventory/material-movements" class="mt-6 space-y-4">
+            @Html.AntiForgeryToken()
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Material</label>
+                <select name="materialId" class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <option value="">Select material…</option>
+                    @foreach (var m in materials)
+                    {
+                        <option value="@m.Id">@m.MaterialName (@m.MaterialCode)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Type</label>
+                    <select name="movementType" class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="in">IN</option>
+                        <option value="out">OUT</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Quantity</label>
+                    <input type="number" min="0.0001" step="0.0001" name="quantity"
+                        class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Reference Type</label>
+                <input type="text" name="referenceType"
+                    class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="stock_in / adjustment / production_use">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Remarks</label>
+                <input type="text" name="remarks"
+                    class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Optional notes…">
+            </div>
+
+            <button class="w-full px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
+                Save Movement
+            </button>
+        </form>
+
+        <div class="mt-8">
+            <a href="/production/schedules" class="inline-flex px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Back to Production</a>
+        </div>
+    </div>
+
+    <div class="lg:col-span-2 bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h3 class="text-lg font-bold text-white">Movement History</h3>
+                <p class="text-sm text-gray-500 mt-1">Latest records (auto-updates stock quantity).</p>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-separate border-spacing-y-3">
+                <thead>
+                    <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                        <th class="px-6 py-4">Material</th>
+                        <th class="px-6 py-4">Type</th>
+                        <th class="px-6 py-4">Qty</th>
+                        <th class="px-6 py-4">Ref</th>
+                        <th class="px-6 py-4">User</th>
+                        <th class="px-6 py-4 text-right">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="6" class="px-6 py-10 text-sm text-gray-500">No movements recorded yet.</td></tr>
+                    }
+                    @foreach (var mv in Model)
+                    {
+                        var typeClass = mv.MovementType == "in"
+                            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                            : "text-red-300 bg-red-500/10 border-red-500/20";
+                        <tr class="bg-white/[0.02] hover:bg-white/[0.05] transition-colors">
+                            <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05]">
+                                <div class="text-sm font-bold text-white">@(mv.Material?.MaterialName ?? "—")</div>
+                                <div class="text-xs text-gray-600">@(mv.Material?.MaterialCode ?? "")</div>
+                            </td>
+                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border @typeClass">
+                                    @mv.MovementType
+                                </span>
+                            </td>
+                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                <div class="text-sm font-semibold text-gray-200">@mv.Quantity.ToString("G") @mv.Unit</div>
+                            </td>
+                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                <div class="text-xs text-gray-400">@(mv.ReferenceType ?? "—")</div>
+                                @if (mv.ProductionScheduleId is not null)
+                                {
+                                    <div class="text-xs text-gray-600">Schedule #@mv.ProductionScheduleId</div>
+                                }
+                                @if (mv.WorkOrderId is not null)
+                                {
+                                    <div class="text-xs text-gray-600">WO #@mv.WorkOrderId</div>
+                                }
+                            </td>
+                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                <div class="text-xs text-gray-400">@(mv.CreatedByUser?.FullName ?? mv.CreatedByUser?.Email ?? "—")</div>
+                            </td>
+                            <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
+                                <div class="text-xs text-gray-600">@mv.CreatedAt.ToString("MMM dd, yyyy HH:mm")</div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="mt-6 flex items-center gap-2">
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    <a href="/inventory/material-movements?page=@i" class="px-4 py-2 text-xs font-bold rounded-xl @(i == page ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
+                }
+            </div>
+        }
+    </div>
+</div>

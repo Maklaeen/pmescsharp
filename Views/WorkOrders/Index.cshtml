@@ -1,0 +1,108 @@
+@model List<PmesCSharp.Models.WorkOrder>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Work Orders";
+    int page = ViewBag.Page;
+    int totalPages = ViewBag.TotalPages;
+    var userRole = (await (UserManager as Microsoft.AspNetCore.Identity.UserManager<PmesCSharp.Models.ApplicationUser>)!
+        .GetRolesAsync((await (UserManager as Microsoft.AspNetCore.Identity.UserManager<PmesCSharp.Models.ApplicationUser>)!
+        .GetUserAsync(User))!)).FirstOrDefault() ?? "";
+}
+@inject Microsoft.AspNetCore.Identity.UserManager<PmesCSharp.Models.ApplicationUser> UserManager
+
+@if (TempData["Success"] is string success)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
+}
+
+<div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Work Orders</h2>
+            <p class="text-sm text-gray-500 mt-1">Track progress per process step.</p>
+        </div>
+        <a href="/production/schedules" class="px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">View Schedules</a>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-separate border-spacing-y-3">
+            <thead>
+                <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                    <th class="px-6 py-4">WO</th>
+                    <th class="px-6 py-4">Schedule</th>
+                    <th class="px-6 py-4">Step</th>
+                    <th class="px-6 py-4">Assigned</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Qty</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="7" class="px-6 py-10 text-sm text-gray-500">No work orders found.</td></tr>
+                }
+                @foreach (var wo in Model)
+                {
+                    var woClass = wo.Status switch
+                    {
+                        "pending" => "text-gray-300 bg-white/5 border-white/10",
+                        "ongoing" => "text-orange-400 bg-orange-500/10 border-orange-500/20",
+                        "done" => "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+                        "cancelled" => "text-red-300 bg-red-500/10 border-red-500/20",
+                        _ => "text-gray-300 bg-white/5 border-white/10"
+                    };
+                    bool canClaim = userRole == "operator"
+                        && wo.AssignedToUserId is null
+                        && wo.Status == "pending"
+                        && wo.ProductionSchedule?.Status == "in_progress";
+
+                    <tr class="bg-white/[0.02] hover:bg-white/[0.05] transition-colors">
+                        <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05]">
+                            <div class="text-sm font-bold text-white">@wo.WorkOrderNo</div>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <a href="/production/schedules/@wo.ProductionScheduleId" class="text-sm font-semibold text-gray-200 hover:text-white">Schedule #@wo.ProductionScheduleId</a>
+                            <div class="text-xs text-gray-600">@(wo.ProductionSchedule?.Product?.ProductName ?? "—")</div>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <div class="text-sm font-semibold text-gray-200">@wo.ProcessStep</div>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <div class="text-xs text-gray-400">@(wo.AssignedToUser?.FullName ?? wo.AssignedToUser?.Email ?? "—")</div>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border @woClass">@wo.Status</span>
+                        </td>
+                        <td class="px-6 py-5 border-y border-white/[0.05]">
+                            <div class="text-xs text-gray-400">Planned: @wo.PlannedQty.ToString("N0")</div>
+                            <div class="text-xs text-gray-500">Actual: @wo.ActualQty.ToString("N0")</div>
+                        </td>
+                        <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
+                            <div class="inline-flex items-center gap-2">
+                                @if (canClaim)
+                                {
+                                    <form method="post" action="/production/work-orders/@wo.Id/claim">
+                                        @Html.AntiForgeryToken()
+                                        <button class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Claim</button>
+                                    </form>
+                                }
+                                <a href="/production/work-orders/@wo.Id" class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/30 text-orange-200 transition-all">Open</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="mt-6 flex items-center gap-2">
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <a href="/production/work-orders?page=@i" class="px-4 py-2 text-xs font-bold rounded-xl @(i == page ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
+            }
+        </div>
+    }
+</div>

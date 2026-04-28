@@ -1,0 +1,22 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Inventory Dashboard";
+}
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h2 class="text-2xl font-bold text-white tracking-tight">MRP &amp; Shortages</h2>
+        <p class="text-sm text-gray-500 mt-1">Check required vs available materials per schedule.</p>
+        <div class="mt-6">
+            <a href="/production/schedules" class="inline-flex px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Open Production Schedules</a>
+        </div>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h2 class="text-2xl font-bold text-white tracking-tight">Stock Movements</h2>
+        <p class="text-sm text-gray-500 mt-1">Record stock-in/stock-out and adjustments.</p>
+        <div class="mt-6">
+            <a href="/inventory/material-movements" class="inline-flex px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Material Movements</a>
+        </div>
+    </div>
+</div>

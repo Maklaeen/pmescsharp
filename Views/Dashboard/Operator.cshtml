@@ -1,0 +1,19 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Operator Dashboard";
+}
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h2 class="text-2xl font-bold text-white tracking-tight">My Work Orders</h2>
+        <p class="text-sm text-gray-500 mt-1">Start, update output, and record material usage.</p>
+        <div class="mt-6">
+            <a href="/production/work-orders" class="inline-flex px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Open Work Orders</a>
+        </div>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h2 class="text-2xl font-bold text-white tracking-tight">Notes</h2>
+        <p class="text-sm text-gray-500 mt-1">If you can’t start a work order, make sure it’s assigned to you.</p>
+    </div>
+</div>
