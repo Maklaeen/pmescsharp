@@ -26,8 +26,10 @@ jobs:
           username: site66006
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
-          server-dir: /wwwroot/
-          dangerous-clean-slate: true
+          server-dir: /
+          dangerous-clean-slate: false
           exclude: |
-            **/.git*
-            **/.git*/**
+            **/logs/**
+            **/wwwroot/images/**
+            **/appsettings.json
+
