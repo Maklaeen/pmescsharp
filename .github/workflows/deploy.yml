@@ -26,7 +26,7 @@ jobs:
           username: site66006
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
-          server-dir: /
+          server-dir: /wwwroot
           dangerous-clean-slate: false
           exclude: |
             **/logs/**
