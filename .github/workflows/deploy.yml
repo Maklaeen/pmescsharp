@@ -19,6 +19,9 @@ jobs:
       - name: Publish
         run: dotnet publish PmesCSharp.csproj -c Release -o ./publish
 
+      - name: Create app_offline.htm
+        run: echo "<h1>Site Updating</h1><p>We'll be back in a minute.</p>" > ./publish/app_offline.htm
+
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -26,7 +29,7 @@ jobs:
           username: site66006
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
-          server-dir: /wwwroot
+          server-dir: wwwroot/
           dangerous-clean-slate: false
           exclude: |
             **/logs/**
