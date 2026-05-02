@@ -20,10 +20,11 @@ public class UsersController : Controller
     }
 
     [HttpGet("/admin/users")]
-    public async Task<IActionResult> Index([FromQuery] int page = 1)
+    public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] bool archived = false)
     {
         const int pageSize = 10;
-        var users = await _userManager.Users
+        var query = _userManager.Users.Where(u => u.IsArchived == archived);
+        var users = await query
             .OrderByDescending(u => u.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -36,10 +37,11 @@ public class UsersController : Controller
             userRoles[user.Id] = roles.FirstOrDefault() ?? "superadmin";
         }
 
-        var totalUsers = await _userManager.Users.CountAsync();
+        var totalUsers = await query.CountAsync();
         ViewBag.UserRoles = userRoles;
         ViewBag.Page = page;
         ViewBag.TotalPages = (int)Math.Ceiling(totalUsers / (double)pageSize);
+        ViewBag.Archived = archived;
         return View(users);
     }
 
@@ -171,7 +173,6 @@ public class UsersController : Controller
         var user = await _userManager.FindByIdAsync(id);
         if (user is not null)
         {
-            // Prevent admin from deleting superadmin
             var roles = await _userManager.GetRolesAsync(user);
             if (roles.Contains("superadmin") && !User.IsInRole("superadmin"))
             {
@@ -179,10 +180,28 @@ public class UsersController : Controller
                 return Redirect("/admin/users");
             }
 
-            await _userManager.DeleteAsync(user);
+            user.IsArchived = true;
+            user.ArchivedAt = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
         }
 
-        TempData["Success"] = "User deleted.";
+        TempData["Success"] = "User archived.";
         return Redirect("/admin/users");
+    }
+
+    [HttpPost("/admin/users/{id}/restore")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Restore(string id)
+    {
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is not null)
+        {
+            user.IsArchived = false;
+            user.ArchivedAt = null;
+            await _userManager.UpdateAsync(user);
+        }
+
+        TempData["Success"] = "User restored.";
+        return Redirect("/admin/users?archived=true");
     }
 }

@@ -5,13 +5,16 @@
     var userRoles = ViewBag.UserRoles as Dictionary<string, string> ?? new();
     int page = ViewBag.Page;
     int totalPages = ViewBag.TotalPages;
+    bool archived = ViewBag.Archived == true;
 }
 
 @if (TempData["Success"] is string success)
 {
-    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">
-        @success
-    </div>
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">@error</div>
 }
 
 <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
@@ -20,10 +23,25 @@
             <h2 class="text-2xl font-bold text-white tracking-tight">System Users</h2>
             <p class="text-sm text-gray-500 mt-1">Manage and monitor all system access and roles.</p>
         </div>
-        <a href="/admin/users/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
-            Add New User
-        </a>
+        <div class="flex items-center gap-3">
+            @if (!archived)
+            {
+                <a href="/admin/users?archived=true" class="px-5 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Archived</a>
+                <a href="/admin/users/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Add New User</a>
+            }
+            else
+            {
+                <a href="/admin/users" class="px-5 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">← Active Users</a>
+            }
+        </div>
     </div>
+
+    @if (archived)
+    {
+        <div class="mb-6 px-4 py-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm rounded-xl">
+            Showing archived users — these users cannot log in.
+        </div>
+    }
 
     <div class="overflow-x-auto">
         <table class="w-full text-left border-separate border-spacing-y-3">
@@ -37,6 +55,10 @@
                 </tr>
             </thead>
             <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="5" class="px-6 py-10 text-sm text-gray-500">No @(archived ? "archived" : "active") users found.</td></tr>
+                }
                 @foreach (var user in Model)
                 {
                     var role = userRoles.GetValueOrDefault(user.Id, "superadmin");
@@ -44,11 +66,11 @@
                     <tr class="bg-white/[0.02] hover:bg-white/[0.05] transition-colors group">
                         <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05]">
                             <div class="flex items-center gap-4">
-                                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/20">
+                                <div class="w-10 h-10 @(archived ? "bg-gray-700" : "bg-blue-600") rounded-xl flex items-center justify-center font-bold text-white shadow-lg">
                                     @initials
                                 </div>
                                 <div>
-                                    <div class="text-sm font-bold text-white">@(user.FullName ?? user.Email)</div>
+                                    <div class="text-sm font-bold @(archived ? "text-gray-500" : "text-white")">@(user.FullName ?? user.Email)</div>
                                     <div class="text-xs text-gray-500">@user.Email</div>
                                 </div>
                             </div>
@@ -59,23 +81,43 @@
                             </span>
                         </td>
                         <td class="px-6 py-5 border-y border-white/[0.05]">
-                            <div class="flex items-center gap-2 text-emerald-500 text-xs font-bold">
-                                <div class="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                                Active
-                            </div>
+                            @if (archived)
+                            {
+                                <div class="flex items-center gap-2 text-gray-500 text-xs font-bold">
+                                    <div class="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
+                                    Archived
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="flex items-center gap-2 text-emerald-500 text-xs font-bold">
+                                    <div class="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                                    Active
+                                </div>
+                            }
                         </td>
                         <td class="px-6 py-5 border-y border-white/[0.05]">
-                            <span class="text-xs text-gray-400">@user.LockoutEnd?.ToString("MMM dd, yyyy")</span>
+                            <span class="text-xs text-gray-400">@user.ArchivedAt?.ToString("MMM dd, yyyy")</span>
                         </td>
                         <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
                             <div class="inline-flex items-center gap-2">
                                 @if (role != "superadmin" || User.IsInRole("superadmin"))
                                 {
-                                    <a href="/admin/users/@user.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
-                                    <form method="post" action="/admin/users/@user.Id/delete" onsubmit="return confirm('Delete this user?');" class="inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Delete</button>
-                                    </form>
+                                    @if (!archived)
+                                    {
+                                        <a href="/admin/users/@user.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
+                                        <form method="post" action="/admin/users/@user.Id/delete" onsubmit="return confirm('Archive this user?');" class="inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 text-yellow-300 transition-all">Archive</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" action="/admin/users/@user.Id/restore" onsubmit="return confirm('Restore this user?');" class="inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all">Restore</button>
+                                        </form>
+                                    }
                                 }
                                 else
                                 {
@@ -94,7 +136,7 @@
         <div class="mt-6 flex items-center gap-2">
             @for (int i = 1; i <= totalPages; i++)
             {
-                <a href="/admin/users?page=@i" class="px-4 py-2 text-xs font-bold rounded-xl @(i == page ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
+                <a href="/admin/users?page=@i&archived=@archived.ToString().ToLower()" class="px-4 py-2 text-xs font-bold rounded-xl @(i == page ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
             }
         </div>
     }
