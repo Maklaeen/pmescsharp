@@ -3,7 +3,7 @@
     Layout = "_AdminLayout";
     ViewData["Title"] = "Users Management";
     var userRoles = ViewBag.UserRoles as Dictionary<string, string> ?? new();
-    int page = ViewBag.Page;
+    int currentPage = ViewBag.Page;
     int totalPages = ViewBag.TotalPages;
     bool archived = ViewBag.Archived == true;
 }
@@ -136,7 +136,7 @@
         <div class="mt-6 flex items-center gap-2">
             @for (int i = 1; i <= totalPages; i++)
             {
-                <a href="/admin/users?page=@i&archived=@archived.ToString().ToLower()" class="px-4 py-2 text-xs font-bold rounded-xl @(i == page ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
+                <a href="/admin/users?page=@i&archived=@archived.ToString().ToLower()" class="px-4 py-2 text-xs font-bold rounded-xl @(i == currentPage ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
             }
         </div>
     }

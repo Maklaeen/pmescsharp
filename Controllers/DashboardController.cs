@@ -13,11 +13,13 @@ public class DashboardController : Controller
 {
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentCompany _currentCompany;
 
-    public DashboardController(AppDbContext db, UserManager<ApplicationUser> userManager)
+    public DashboardController(AppDbContext db, UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany)
     {
         _db = db;
         _userManager = userManager;
+       _currentCompany = currentCompany;
     }
 
     [HttpGet("/dashboard")]
@@ -55,12 +57,33 @@ public class DashboardController : Controller
     [HttpGet("/admin/dashboard")]
     public async Task<IActionResult> Admin()
     {
+     var companyId = _currentCompany.CompanyId;
+     if (!User.IsInRole("superadmin") && companyId <= 0)
+            return Forbid();
+
+        if (!User.IsInRole("superadmin"))
+        {
+            var hasSubscription = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId);
+            if (!hasSubscription)
+                return Redirect("/subscription/setup");
+        }
+
+        var isSuperAdmin = User.IsInRole("superadmin");
+
         var model = new AdminDashboardViewModel
         {
-            Users = await _userManager.Users.CountAsync(),
+         Users = isSuperAdmin
+                ? await _userManager.Users.CountAsync()
+                : await _userManager.Users.Where(u => u.CompanyId == companyId).CountAsync(),
             Products = await _db.Products.CountAsync(),
             Materials = await _db.Materials.CountAsync(),
             WorkOrdersDisplay = await _db.WorkOrders.CountAsync() is int c && c > 0 ? c.ToString() : "-",
+          CompanyName = isSuperAdmin
+                ? "All Companies"
+                : (await _db.Companies.Where(c => c.Id == companyId).Select(c => c.Name).FirstOrDefaultAsync() ?? ""),
+            WorkOrdersInProgress = await _db.WorkOrders.CountAsync(w => w.Status != "done"),
+            SchedulesInProgress = await _db.ProductionSchedules.CountAsync(s => s.Status == "in_progress"),
+            SchedulesCompleted = await _db.ProductionSchedules.CountAsync(s => s.Status == "completed"),
         };
 
         return View(model);

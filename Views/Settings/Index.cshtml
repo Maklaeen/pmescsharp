@@ -1,0 +1,61 @@
+@model PmesCSharp.ViewModels.Settings.SettingsViewModel
+@{
+    Layout = (ViewData["Layout"] as string) ?? "_AdminLayout";
+    ViewData["Title"] = "Settings";
+}
+
+<div class="bg-gray-900/40 border border-gray-800/50 rounded-2xl p-8">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">System</div>
+            <h2 class="text-xl font-extrabold text-white tracking-tight mt-1">Settings</h2>
+        </div>
+    </div>
+
+    @if (TempData["Success"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="mb-6 text-emerald-400 text-sm bg-emerald-400/10 border border-emerald-400/20 rounded-lg px-4 py-2">@ok</div>
+    }
+
+    <form method="post" action="/settings" class="space-y-6">
+        @Html.AntiForgeryToken()
+
+        <div>
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-3">Appearance</div>
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer">
+                    <input type="radio" name="Theme" value="dark" checked="@(Model.Theme == "dark")" />
+                    <span class="text-sm font-semibold text-gray-200">Dark</span>
+                </label>
+                <label class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer">
+                    <input type="radio" name="Theme" value="light" checked="@(Model.Theme == "light")" />
+                    <span class="text-sm font-semibold text-gray-200">Light</span>
+                </label>
+            </div>
+            <span class="text-red-400 text-xs mt-2 block">@Html.ValidationMessageFor(m => m.Theme)</span>
+        </div>
+
+        <div class="pt-2">
+            <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-6 rounded-lg transition text-sm">
+                Save Settings
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        function applyTheme(theme) {
+            try { localStorage.setItem('theme', theme); } catch (e) { }
+            document.body.classList.toggle('theme-light', theme === 'light');
+        }
+
+        document.querySelectorAll('input[name="Theme"]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                applyTheme(this.value);
+            });
+        });
+    })();
+</script>
+}

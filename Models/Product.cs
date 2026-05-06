@@ -7,6 +7,9 @@ public class Product
 {
     public int Id { get; set; }
 
+    public int CompanyId { get; set; }
+    public Company Company { get; set; } = null!;
+
     [Required, StringLength(100)]
     public string ProductCode { get; set; } = "";
 

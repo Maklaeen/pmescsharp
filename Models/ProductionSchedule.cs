@@ -7,6 +7,9 @@ public class ProductionSchedule
 {
     public int Id { get; set; }
 
+    public int CompanyId { get; set; }
+    public Company Company { get; set; } = null!;
+
     public int ProductId { get; set; }
     public Product Product { get; set; } = null!;
 

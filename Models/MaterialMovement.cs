@@ -7,6 +7,9 @@ public class MaterialMovement
 {
     public int Id { get; set; }
 
+    public int CompanyId { get; set; }
+    public Company Company { get; set; } = null!;
+
     public int MaterialId { get; set; }
     public Material Material { get; set; } = null!;
 

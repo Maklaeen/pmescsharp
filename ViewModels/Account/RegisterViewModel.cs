@@ -9,6 +9,10 @@ public class RegisterViewModel
     public string Name { get; set; } = "";
 
     [Required]
+    [StringLength(200)]
+    public string CompanyName { get; set; } = "";
+
+    [Required]
     [EmailAddress]
     public string Email { get; set; } = "";
 

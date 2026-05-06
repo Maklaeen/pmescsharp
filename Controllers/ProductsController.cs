@@ -11,8 +11,13 @@ namespace PmesCSharp.Controllers;
 public class ProductsController : Controller
 {
     private readonly AppDbContext _db;
+    private readonly ICurrentCompany _currentCompany;
 
-    public ProductsController(AppDbContext db) => _db = db;
+    public ProductsController(AppDbContext db, ICurrentCompany currentCompany)
+    {
+        _db = db;
+        _currentCompany = currentCompany;
+    }
 
     [HttpGet("/admin/products")]
     public async Task<IActionResult> Index([FromQuery] int page = 1)
@@ -39,7 +44,8 @@ public class ProductsController : Controller
     {
         if (!ModelState.IsValid) return View("Create", model);
 
-        var existing = await _db.Products.AnyAsync(p => p.ProductCode == model.ProductCode);
+        var companyId = _currentCompany.CompanyId;
+        var existing = await _db.Products.AnyAsync(p => p.ProductCode == model.ProductCode && p.CompanyId == companyId);
         if (existing)
         {
             ModelState.AddModelError(nameof(model.ProductCode), "Product code already exists.");
@@ -48,6 +54,7 @@ public class ProductsController : Controller
 
         _db.Products.Add(new Product
         {
+            CompanyId = companyId,
             ProductCode = model.ProductCode,
             ProductName = model.ProductName,
             Description = model.Description,
@@ -91,7 +98,8 @@ public class ProductsController : Controller
         var product = await _db.Products.FindAsync(id);
         if (product is null) return NotFound();
 
-        var duplicate = await _db.Products.AnyAsync(p => p.ProductCode == model.ProductCode && p.Id != id);
+     var companyId = _currentCompany.CompanyId;
+        var duplicate = await _db.Products.AnyAsync(p => p.ProductCode == model.ProductCode && p.Id != id && p.CompanyId == companyId);
         if (duplicate)
         {
             ModelState.AddModelError(nameof(model.ProductCode), "Product code already exists.");

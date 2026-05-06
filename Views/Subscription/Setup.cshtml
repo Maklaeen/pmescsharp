@@ -1,0 +1,61 @@
+@model PmesCSharp.ViewModels.Subscription.SubscriptionSetupViewModel
+@using PmesCSharp.Models
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Subscription Setup";
+}
+
+<div class="max-w-3xl">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h2 class="text-2xl font-extrabold text-white tracking-tight">Start your free trial</h2>
+        <p class="text-sm text-gray-500 mt-2">Choose a plan. Your company will start with a 30-day trial. Payments can be enabled later.</p>
+
+        <form method="post" action="/subscription/setup" class="mt-10 space-y-6">
+            @Html.AntiForgeryToken()
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label class="block p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-bold text-white">Standard</div>
+                            <div class="text-xs text-gray-500 mt-1">Core MES features for small teams</div>
+                        </div>
+                        <input type="radio" name="Plan" value="Standard" @(Model.Plan == SubscriptionPlan.Standard ? "checked" : "") />
+                    </div>
+                    <ul class="mt-4 text-xs text-gray-500 space-y-1">
+                        <li>• Production schedules & work orders</li>
+                        <li>• Inventory movements</li>
+                        <li>• QC inspections</li>
+                        <li>• Basic dashboards & audit logs</li>
+                    </ul>
+                </label>
+
+                <label class="block p-5 rounded-2xl border border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-bold text-white">Pro</div>
+                            <div class="text-xs text-gray-500 mt-1">Advanced controls & visibility</div>
+                        </div>
+                        <input type="radio" name="Plan" value="Pro" @(Model.Plan == SubscriptionPlan.Pro ? "checked" : "") />
+                    </div>
+                    <ul class="mt-4 text-xs text-gray-500 space-y-1">
+                        <li>• Everything in Standard</li>
+                        <li>• Production costing / reports</li>
+                        <li>• Advanced audit & approvals</li>
+                        <li>• Priority support & onboarding</li>
+                    </ul>
+                </label>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-300 mb-1.5">Billing email (optional)</label>
+                <input name="BillingEmail" type="email" value="@Model.BillingEmail" class="w-full bg-white/[0.03] border border-white/[0.06] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="billing@company.com" />
+                <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.BillingEmail)</span>
+            </div>
+
+            <button type="submit" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
+                Start 30-day trial
+            </button>
+        </form>
+    </div>
+</div>

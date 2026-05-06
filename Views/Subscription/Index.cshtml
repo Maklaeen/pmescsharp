@@ -1,0 +1,38 @@
+@model PmesCSharp.Models.CompanySubscription
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Subscription";
+}
+
+@if (TempData["Success"] is string success)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
+}
+
+<div class="max-w-3xl">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h2 class="text-2xl font-extrabold text-white tracking-tight">Subscription</h2>
+        <p class="text-sm text-gray-500 mt-2">Plan and trial status for your company.</p>
+
+        <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Plan</div>
+                <div class="text-xl font-extrabold text-white mt-2">@Model.Plan</div>
+            </div>
+            <div class="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Status</div>
+                <div class="text-xl font-extrabold text-white mt-2">@Model.Status</div>
+            </div>
+            <div class="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Trial ends</div>
+                <div class="text-sm font-bold text-white mt-2">@(Model.TrialEndsAt?.ToLocalTime().ToString("MMM dd, yyyy HH:mm") ?? "-")</div>
+            </div>
+            <div class="p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Billing email</div>
+                <div class="text-sm font-bold text-white mt-2">@(string.IsNullOrWhiteSpace(Model.BillingEmail) ? "-" : Model.BillingEmail)</div>
+            </div>
+        </div>
+
+        <div class="mt-10 text-xs text-gray-500">Payment integration is not enabled yet. This page stores plan selection and trial dates.</div>
+    </div>
+</div>

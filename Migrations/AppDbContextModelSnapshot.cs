@@ -163,8 +163,14 @@ namespace PmesCSharp.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("ArchivedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -180,6 +186,9 @@ namespace PmesCSharp.Migrations
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsArchived")
                         .HasColumnType("bit");
@@ -201,6 +210,10 @@ namespace PmesCSharp.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PendingRole")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
@@ -219,6 +232,8 @@ namespace PmesCSharp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
@@ -230,6 +245,58 @@ namespace PmesCSharp.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("PmesCSharp.Models.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ActorUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("CompanyId", "CreatedAt");
+
+                    b.ToTable("AuditLogs");
+                });
+
             modelBuilder.Entity("PmesCSharp.Models.BillOfMaterial", b =>
                 {
                     b.Property<int>("Id")
@@ -237,6 +304,9 @@ namespace PmesCSharp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -262,10 +332,201 @@ namespace PmesCSharp.Migrations
 
                     b.HasIndex("MaterialId");
 
-                    b.HasIndex("ProductId", "MaterialId")
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("CompanyId", "ProductId", "MaterialId")
                         .IsUnique();
 
                     b.ToTable("BillOfMaterials");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.Company", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Companies");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.CompanyInvite", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InvitedEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("MaxUses")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("UsesCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "Code");
+
+                    b.HasIndex("CompanyId", "InvitedEmail", "CreatedAt");
+
+                    b.ToTable("CompanyInvites");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.CompanyProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Industry")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique();
+
+                    b.ToTable("CompanyProfiles");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.CompanySubscription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BillingEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CurrentPeriodEndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Plan")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("TrialEndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique();
+
+                    b.ToTable("CompanySubscriptions");
                 });
 
             modelBuilder.Entity("PmesCSharp.Models.Material", b =>
@@ -275,6 +536,9 @@ namespace PmesCSharp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -316,7 +580,7 @@ namespace PmesCSharp.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MaterialCode")
+                    b.HasIndex("CompanyId", "MaterialCode")
                         .IsUnique();
 
                     b.ToTable("Materials");
@@ -329,6 +593,9 @@ namespace PmesCSharp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -371,6 +638,8 @@ namespace PmesCSharp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("ProductionScheduleId");
@@ -389,6 +658,9 @@ namespace PmesCSharp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -424,7 +696,7 @@ namespace PmesCSharp.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductCode")
+                    b.HasIndex("CompanyId", "ProductCode")
                         .IsUnique();
 
                     b.ToTable("Products");
@@ -437,6 +709,9 @@ namespace PmesCSharp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("ComputedAt")
                         .HasColumnType("datetime2");
@@ -467,6 +742,8 @@ namespace PmesCSharp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("ComputedByUserId");
 
                     b.HasIndex("ProductionScheduleId")
@@ -485,6 +762,9 @@ namespace PmesCSharp.Migrations
 
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2");
@@ -528,6 +808,8 @@ namespace PmesCSharp.Migrations
 
                     b.HasIndex("Status", "ScheduleDate");
 
+                    b.HasIndex("CompanyId", "Status", "ScheduleDate");
+
                     b.ToTable("ProductionSchedules");
                 });
 
@@ -538,6 +820,9 @@ namespace PmesCSharp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -571,11 +856,42 @@ namespace PmesCSharp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("InspectedByUserId");
 
                     b.HasIndex("ProductionScheduleId", "Result");
 
                     b.ToTable("QualityChecks");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.UserSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserSettings");
                 });
 
             modelBuilder.Entity("PmesCSharp.Models.WorkOrder", b =>
@@ -591,6 +907,9 @@ namespace PmesCSharp.Migrations
 
                     b.Property<string>("AssignedToUserId")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -627,10 +946,10 @@ namespace PmesCSharp.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WorkOrderNo")
-                        .IsUnique();
-
                     b.HasIndex("AssignedToUserId", "Status");
+
+                    b.HasIndex("CompanyId", "WorkOrderNo")
+                        .IsUnique();
 
                     b.HasIndex("ProductionScheduleId", "Status");
 
@@ -688,8 +1007,42 @@ namespace PmesCSharp.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PmesCSharp.Models.ApplicationUser", b =>
+                {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.AuditLog", b =>
+                {
+                    b.HasOne("PmesCSharp.Models.ApplicationUser", "ActorUser")
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ActorUser");
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("PmesCSharp.Models.BillOfMaterial", b =>
                 {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PmesCSharp.Models.Material", "Material")
                         .WithMany()
                         .HasForeignKey("MaterialId")
@@ -702,13 +1055,72 @@ namespace PmesCSharp.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Company");
+
                     b.Navigation("Material");
 
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("PmesCSharp.Models.CompanyInvite", b =>
+                {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PmesCSharp.Models.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Company");
+
+                    b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.CompanyProfile", b =>
+                {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.CompanySubscription", b =>
+                {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.Material", b =>
+                {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("PmesCSharp.Models.MaterialMovement", b =>
                 {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PmesCSharp.Models.ApplicationUser", "CreatedByUser")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
@@ -730,6 +1142,8 @@ namespace PmesCSharp.Migrations
                         .HasForeignKey("WorkOrderId")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.Navigation("Company");
+
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Material");
@@ -739,8 +1153,25 @@ namespace PmesCSharp.Migrations
                     b.Navigation("WorkOrder");
                 });
 
+            modelBuilder.Entity("PmesCSharp.Models.Product", b =>
+                {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("PmesCSharp.Models.ProductionCost", b =>
                 {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PmesCSharp.Models.ApplicationUser", "ComputedByUser")
                         .WithMany()
                         .HasForeignKey("ComputedByUserId")
@@ -752,6 +1183,8 @@ namespace PmesCSharp.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Company");
+
                     b.Navigation("ComputedByUser");
 
                     b.Navigation("ProductionSchedule");
@@ -759,6 +1192,12 @@ namespace PmesCSharp.Migrations
 
             modelBuilder.Entity("PmesCSharp.Models.ProductionSchedule", b =>
                 {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PmesCSharp.Models.ApplicationUser", "CreatedByUser")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
@@ -770,6 +1209,8 @@ namespace PmesCSharp.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Company");
+
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Product");
@@ -777,6 +1218,12 @@ namespace PmesCSharp.Migrations
 
             modelBuilder.Entity("PmesCSharp.Models.QualityCheck", b =>
                 {
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PmesCSharp.Models.ApplicationUser", "InspectedByUser")
                         .WithMany()
                         .HasForeignKey("InspectedByUserId")
@@ -788,9 +1235,22 @@ namespace PmesCSharp.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Company");
+
                     b.Navigation("InspectedByUser");
 
                     b.Navigation("ProductionSchedule");
+                });
+
+            modelBuilder.Entity("PmesCSharp.Models.UserSetting", b =>
+                {
+                    b.HasOne("PmesCSharp.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PmesCSharp.Models.WorkOrder", b =>
@@ -800,6 +1260,12 @@ namespace PmesCSharp.Migrations
                         .HasForeignKey("AssignedToUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("PmesCSharp.Models.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PmesCSharp.Models.ProductionSchedule", "ProductionSchedule")
                         .WithMany("WorkOrders")
                         .HasForeignKey("ProductionScheduleId")
@@ -807,6 +1273,8 @@ namespace PmesCSharp.Migrations
                         .IsRequired();
 
                     b.Navigation("AssignedToUser");
+
+                    b.Navigation("Company");
 
                     b.Navigation("ProductionSchedule");
                 });

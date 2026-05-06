@@ -6,11 +6,5 @@ namespace PmesCSharp.Controllers;
 [Authorize]
 public class ModulesController : Controller
 {
-    [HttpGet("/admin/audit-logs")]
-    [Authorize(Roles = "superadmin")]
-    public IActionResult AuditLogs()
-    {
-        ViewData["Title"] = "Audit Logs";
-        return View("~/Views/Shared/ModulePlaceholder.cshtml");
-    }
+    // Placeholder controller for modules that are not yet implemented.
 }
