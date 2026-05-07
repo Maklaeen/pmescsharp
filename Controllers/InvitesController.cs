@@ -98,7 +98,7 @@ public class InvitesController : Controller
         _db.Add(invite);
         await _db.SaveChangesAsync(cancellationToken);
 
-        var joinUrl = Url.Action("Invite", "Join", new { token }, Request.Scheme);
+        var joinUrl = $"{Request.Scheme}://{Request.Host}/join/{token}";
         var subject = "PMES: Company invitation";
         var body = $"You have been invited to join a PMES company.\n\nRole: {invite.Role}\nInvite link: {joinUrl}\nInvite code: {invite.Code}\n\nThis invite expires on: {invite.ExpiresAt:yyyy-MM-dd HH:mm} (UTC).\n\nIf you did not expect this invite, you can ignore this email.";
 

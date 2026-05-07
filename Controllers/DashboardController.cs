@@ -19,36 +19,22 @@ public class DashboardController : Controller
     {
         _db = db;
         _userManager = userManager;
-       _currentCompany = currentCompany;
+        _currentCompany = currentCompany;
     }
 
     [HttpGet("/dashboard")]
     public IActionResult Index()
     {
         if (User.IsInRole("superadmin") || User.IsInRole("admin"))
-        {
             return Redirect("/admin/dashboard");
-        }
-
         if (User.IsInRole("planner"))
-        {
             return Redirect("/planner/dashboard");
-        }
-
         if (User.IsInRole("inventory"))
-        {
             return Redirect("/inventory/dashboard");
-        }
-
         if (User.IsInRole("operator"))
-        {
             return Redirect("/operator/dashboard");
-        }
-
         if (User.IsInRole("qc"))
-        {
             return Redirect("/qc/dashboard");
-        }
 
         return View("NoRole");
     }
@@ -57,33 +43,23 @@ public class DashboardController : Controller
     [HttpGet("/admin/dashboard")]
     public async Task<IActionResult> Admin()
     {
-     var companyId = _currentCompany.CompanyId;
-     if (!User.IsInRole("superadmin") && companyId <= 0)
-            return Forbid();
-
-        if (!User.IsInRole("superadmin"))
-        {
-            var hasSubscription = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId);
-            if (!hasSubscription)
-                return Redirect("/subscription/setup");
-        }
-
+        var companyId = _currentCompany.CompanyId;
         var isSuperAdmin = User.IsInRole("superadmin");
+
+        var usersCount = isSuperAdmin || companyId <= 0
+            ? await _userManager.Users.CountAsync()
+            : await _userManager.Users.Where(u => u.CompanyId == companyId).CountAsync();
+
+        var productsCount = await _db.Products.CountAsync();
+        var materialsCount = await _db.Materials.CountAsync();
+        var workOrdersCount = await _db.WorkOrders.CountAsync();
 
         var model = new AdminDashboardViewModel
         {
-         Users = isSuperAdmin
-                ? await _userManager.Users.CountAsync()
-                : await _userManager.Users.Where(u => u.CompanyId == companyId).CountAsync(),
-            Products = await _db.Products.CountAsync(),
-            Materials = await _db.Materials.CountAsync(),
-            WorkOrdersDisplay = await _db.WorkOrders.CountAsync() is int c && c > 0 ? c.ToString() : "-",
-          CompanyName = isSuperAdmin
-                ? "All Companies"
-                : (await _db.Companies.Where(c => c.Id == companyId).Select(c => c.Name).FirstOrDefaultAsync() ?? ""),
-            WorkOrdersInProgress = await _db.WorkOrders.CountAsync(w => w.Status != "done"),
-            SchedulesInProgress = await _db.ProductionSchedules.CountAsync(s => s.Status == "in_progress"),
-            SchedulesCompleted = await _db.ProductionSchedules.CountAsync(s => s.Status == "completed"),
+            Users = usersCount,
+            Products = productsCount,
+            Materials = materialsCount,
+            WorkOrdersDisplay = workOrdersCount > 0 ? workOrdersCount.ToString() : "-",
         };
 
         return View(model);

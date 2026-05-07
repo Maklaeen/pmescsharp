@@ -1,0 +1,107 @@
+@model List<PmesCSharp.Models.Invitation>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Invitations";
+    var roles = ViewBag.Roles as string[] ?? [];
+}
+
+@if (TempData["Success"] is string success)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">@error</div>
+}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h2 class="text-xl font-bold text-white tracking-tight mb-2">Send Invitation</h2>
+        <p class="text-sm text-gray-500 mb-6">Invite a user via email and assign their role.</p>
+
+        <form method="post" action="/admin/invitations" class="space-y-4">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Email Address</label>
+                <input type="email" name="email" required
+                    class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="user@example.com">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Role</label>
+                <select name="role" class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    @foreach (var role in roles)
+                    {
+                        <option value="@role">@role</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="w-full px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
+                Send Invitation
+            </button>
+        </form>
+    </div>
+
+    <div class="lg:col-span-2 bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h3 class="text-lg font-bold text-white mb-6">Sent Invitations</h3>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-separate border-spacing-y-3">
+                <thead>
+                    <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                        <th class="px-6 py-4">Email</th>
+                        <th class="px-6 py-4">Role</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Expires</th>
+                        <th class="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="5" class="px-6 py-10 text-sm text-gray-500">No invitations sent yet.</td></tr>
+                    }
+                    @foreach (var inv in Model)
+                    {
+                        var isExpired = inv.ExpiresAt < DateTime.UtcNow;
+                        var statusClass = inv.IsAccepted
+                            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                            : isExpired
+                                ? "text-red-400 bg-red-500/10 border-red-500/20"
+                                : "text-orange-400 bg-orange-500/10 border-orange-500/20";
+                        var statusLabel = inv.IsAccepted ? "Accepted" : isExpired ? "Expired" : "Pending";
+
+                        <tr class="bg-white/[0.02] hover:bg-white/[0.05] transition-colors">
+                            <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05]">
+                                <div class="text-sm font-bold text-white">@inv.Email</div>
+                                <div class="text-xs text-gray-500">by @(inv.InvitedByUser?.FullName ?? inv.InvitedByUser?.Email ?? "—")</div>
+                            </td>
+                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                <span class="text-[10px] font-bold text-orange-500 uppercase tracking-widest bg-orange-500/5 px-2.5 py-1 rounded-lg border border-orange-500/10">@inv.Role</span>
+                            </td>
+                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border @statusClass">@statusLabel</span>
+                            </td>
+                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                <div class="text-xs text-gray-400">@inv.ExpiresAt.ToString("MMM dd, yyyy")</div>
+                            </td>
+                            <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
+                                @if (!inv.IsAccepted)
+                                {
+                                    <form method="post" action="/admin/invitations/@inv.Id/revoke" onsubmit="return confirm('Revoke this invitation?');" class="inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Revoke</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-xs text-gray-600">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

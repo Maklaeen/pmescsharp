@@ -14,17 +14,20 @@ public class AccountController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IConfiguration _configuration;
     private readonly AppDbContext _db;
+    private readonly PmesCSharp.Services.EmailService _email;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
-        AppDbContext db)
+        AppDbContext db,
+        PmesCSharp.Services.EmailService email)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _configuration = configuration;
        _db = db;
+        _email = email;
     }
 
     [HttpGet("/login")]
@@ -196,14 +199,22 @@ public class AccountController : Controller
         if (user is not null)
         {
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var resetUrl = Url.Action("ResetPassword", "Account", new { token }, Request.Scheme);
-            if (resetUrl is not null)
+            var resetUrl = Url.Action("ResetPassword", "Account", new { token }, Request.Scheme)
+                + $"?email={Uri.EscapeDataString(model.Email)}";
+
+            try
             {
-                // For school/dev: surface the link without requiring SMTP.
-                if (_configuration.GetValue<bool>("Seed:Enabled"))
-                {
-                    status = $"Reset link (dev): {resetUrl}?email={Uri.EscapeDataString(model.Email)}";
-                }
+                await _email.SendAsync(
+                    model.Email,
+                    "Reset your PMES password",
+                    $"""<p>Hi,</p><p>Click the link below to reset your password:</p><p><a href="{resetUrl}">{resetUrl}</a></p><p>If you did not request this, ignore this email.</p>"""
+                );
+                status = "Password reset link has been sent to your email.";
+            }
+            catch
+            {
+                // fallback for dev
+                status = $"Reset link (dev): {resetUrl}";
             }
         }
 

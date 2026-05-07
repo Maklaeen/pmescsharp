@@ -8,7 +8,7 @@ using PmesCSharp.ViewModels.Company;
 
 namespace PmesCSharp.Controllers;
 
-[Authorize(Roles = "superadmin,admin")]
+[Authorize]
 public class CompanyController : Controller
 {
     private readonly AppDbContext _db;
@@ -47,6 +47,7 @@ public class CompanyController : Controller
     }
 
     [HttpPost("/company/profile")]
+    [Authorize(Roles = "superadmin,admin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveProfile(CompanyProfileViewModel model, CancellationToken cancellationToken)
     {
