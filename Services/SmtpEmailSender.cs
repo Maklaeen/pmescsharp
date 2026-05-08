@@ -28,8 +28,11 @@ public class SmtpEmailSender : IEmailSender
 
         var port = _configuration.GetValue<int?>("Smtp:Port") ?? 587;
         var from = _configuration["Smtp:From"] ?? "no-reply@pmes.local";
-        var username = _configuration["Smtp:Username"];
-        var password = _configuration["Smtp:Password"];
+        var username = _configuration["Smtp:Username"]?.Trim();
+        var passwordRaw = _configuration["Smtp:Password"];
+        var password = string.IsNullOrWhiteSpace(passwordRaw)
+            ? null
+            : new string(passwordRaw.Where(c => !char.IsWhiteSpace(c)).ToArray());
         var enableSsl = _configuration.GetValue<bool?>("Smtp:EnableSsl") ?? true;
 
         using var message = new MailMessage(from, toEmail)
@@ -49,12 +52,12 @@ public class SmtpEmailSender : IEmailSender
 
         client.UseDefaultCredentials = false;
 
-        if (!string.IsNullOrWhiteSpace(username))		
+        if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))		
         {
             client.Credentials = new NetworkCredential(username, password);
         }
 
-     _logger.LogInformation("Sending email via SMTP {Host}:{Port} (SSL={EnableSsl}) From={From} To={To} Subject={Subject}", host, port, enableSsl, from, toEmail, subject);
+     _logger.LogInformation("Sending email via SMTP {Host}:{Port} (SSL={EnableSsl}) From={From} To={To} Subject={Subject} Auth={HasAuth}", host, port, enableSsl, from, toEmail, subject, !string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password));
 
         try
         {
