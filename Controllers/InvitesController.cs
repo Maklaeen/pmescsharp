@@ -102,7 +102,16 @@ public class InvitesController : Controller
         var subject = "PMES: Company invitation";
         var body = $"You have been invited to join a PMES company.\n\nRole: {invite.Role}\nInvite link: {joinUrl}\nInvite code: {invite.Code}\n\nThis invite expires on: {invite.ExpiresAt:yyyy-MM-dd HH:mm} (UTC).\n\nIf you did not expect this invite, you can ignore this email.";
 
-        await _email.SendAsync(invite.InvitedEmail, subject, body, cancellationToken);
+      try
+        {
+            await _email.SendAsync(invite.InvitedEmail, subject, body, cancellationToken);
+        }
+        catch
+        {
+            // Keep the invite row for troubleshooting but show an error to the user.
+            TempData["Error"] = "Failed to send invite email. Please check SMTP settings.";
+            return Redirect("/admin/users/invites");
+        }
 
         await _audit.LogAsync("invite.create", "CompanyInvite", invite.Id.ToString(), $"Invited {invite.InvitedEmail} as {invite.Role} (exp {invite.ExpiresAt:O})", cancellationToken);
 
