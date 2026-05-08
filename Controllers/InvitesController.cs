@@ -115,6 +115,7 @@ public class InvitesController : Controller
 
         await _audit.LogAsync("invite.create", "CompanyInvite", invite.Id.ToString(), $"Invited {invite.InvitedEmail} as {invite.Role} (exp {invite.ExpiresAt:O})", cancellationToken);
 
+       // If SMTP isn't configured, the sender will throw and this action will show a friendly error.
         TempData["Success"] = "Invite sent.";
         return Redirect("/admin/users/invites");
     }

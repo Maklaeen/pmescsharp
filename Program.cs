@@ -1,11 +1,26 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using PmesCSharp.Data;
 using PmesCSharp.Models;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+
+var configuredKeysPath = builder.Configuration["DataProtection:KeysPath"];
+var keysPath = string.IsNullOrWhiteSpace(configuredKeysPath)
+    ? Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")
+    : configuredKeysPath;
+
+Directory.CreateDirectory(keysPath);
+
+builder.Services
+    .AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+    .SetApplicationName("PMES");
+
 builder.Services.AddScoped<PmesCSharp.Services.EmailService>();
 builder.Services.AddScoped<PmesCSharp.Services.IEmailSender, PmesCSharp.Services.SmtpEmailSender>();
 builder.Services.AddScoped<PmesCSharp.Services.IAuditLogger, PmesCSharp.Services.AuditLogger>();
