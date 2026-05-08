@@ -23,6 +23,8 @@ public class CompanyController : Controller
     }
 
     [HttpGet("/company/profile")]
+    [HttpGet("/company")]
+    [HttpGet("/company/settings")]
     public async Task<IActionResult> Profile()
     {
         var companyId = _currentCompany.CompanyId;
@@ -47,6 +49,8 @@ public class CompanyController : Controller
     }
 
     [HttpPost("/company/profile")]
+    [HttpPost("/company")]
+    [HttpPost("/company/settings")]
     [Authorize(Roles = "superadmin,admin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveProfile(CompanyProfileViewModel model, CancellationToken cancellationToken)
@@ -95,6 +99,6 @@ public class CompanyController : Controller
         await _audit.LogAsync("company.profile.update", "Company", companyId.ToString(), $"Updated company profile: {model.DisplayName}", cancellationToken);
 
         TempData["Success"] = "Company profile updated.";
-        return Redirect("/company/profile");
+        return Redirect("/company");
     }
 }

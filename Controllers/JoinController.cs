@@ -17,11 +17,14 @@ public class JoinController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
 
-    public JoinController(AppDbContext db, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+    private readonly PmesCSharp.Services.EmailService _email;
+
+    public JoinController(AppDbContext db, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, PmesCSharp.Services.EmailService email)
     {
         _db = db;
         _userManager = userManager;
         _signInManager = signInManager;
+        _email = email;
     }
 
     [HttpGet("/join/{token}")]
@@ -91,7 +94,7 @@ public class JoinController : Controller
             UserName = invite.InvitedEmail,
             Email = invite.InvitedEmail,
             FullName = model.Name,
-            EmailConfirmed = true,
+            EmailConfirmed = false,
             CompanyId = invite.CompanyId,
             IsApproved = false,
             ApprovedAt = null,
@@ -109,6 +112,23 @@ public class JoinController : Controller
         invite.UsesCount++;
         invite.ConsumedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        try
+        {
+            var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encoded = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(emailToken));
+            var confirmUrl = Url.Action("ConfirmEmail", "Profile", new { userId = user.Id, token = encoded }, Request.Scheme);
+
+            await _email.SendAsync(
+                user.Email!,
+                "Verify your PMES email",
+                $"""<p>Hi {System.Net.WebUtility.HtmlEncode(user.FullName ?? user.Email)},</p><p>Please verify your email by clicking the link below:</p><p><a href=\"{confirmUrl}\">Verify Email</a></p><p>If you did not create this account, you can ignore this email.</p>"""
+            );
+        }
+        catch
+        {
+            // Don't block join flow if email sending fails.
+        }
 
         TempData["Status"] = "Registration successful. Please wait for admin approval before logging in.";
         return Redirect("/join/pending");

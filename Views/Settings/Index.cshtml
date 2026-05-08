@@ -4,7 +4,7 @@
     ViewData["Title"] = "Settings";
 }
 
-<div class="bg-gray-900/40 border border-gray-800/50 rounded-2xl p-8">
+<div class="settings-card bg-gray-900/40 border border-gray-800/50 rounded-2xl p-8">
     <div class="flex items-center justify-between mb-6">
         <div>
             <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">System</div>
@@ -24,11 +24,11 @@
             <div class="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-3">Appearance</div>
             <div class="flex items-center gap-3">
                 <label class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer">
-                    <input type="radio" name="Theme" value="dark" checked="@(Model.Theme == "dark")" />
+                    <input type="radio" name="Theme" value="dark" @(Model.Theme == "dark" ? "checked" : "") class="accent-orange-500" />
                     <span class="text-sm font-semibold text-gray-200">Dark</span>
                 </label>
                 <label class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer">
-                    <input type="radio" name="Theme" value="light" checked="@(Model.Theme == "light")" />
+                    <input type="radio" name="Theme" value="light" @(Model.Theme == "light" ? "checked" : "") class="accent-orange-500" />
                     <span class="text-sm font-semibold text-gray-200">Light</span>
                 </label>
             </div>
@@ -44,12 +44,35 @@
 </div>
 
 @section Scripts {
+<style>
+    body.theme-light .settings-card {
+        background: rgba(255, 255, 255, 0.9) !important;
+        border-color: rgba(0, 0, 0, 0.08) !important;
+    }
+    body.theme-light .settings-card h2,
+    body.theme-light .settings-card .text-white {
+        color: #111827 !important;
+    }
+    body.theme-light .settings-card .text-gray-500,
+    body.theme-light .settings-card .text-gray-600,
+    body.theme-light .settings-card .text-gray-400,
+    body.theme-light .settings-card .text-gray-200 {
+        color: #4b5563 !important;
+    }
+    body.theme-light .settings-card label {
+        background: rgba(0, 0, 0, 0.03) !important;
+        border-color: rgba(0, 0, 0, 0.08) !important;
+    }
+</style>
 <script>
     (function () {
         function applyTheme(theme) {
             try { localStorage.setItem('theme', theme); } catch (e) { }
             document.body.classList.toggle('theme-light', theme === 'light');
         }
+
+        // Ensure theme is applied on load based on the current setting.
+        applyTheme('@Model.Theme');
 
         document.querySelectorAll('input[name="Theme"]').forEach(function (el) {
             el.addEventListener('change', function () {

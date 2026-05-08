@@ -26,12 +26,13 @@
         <div class="flex items-center gap-3">
             @if (!archived)
             {
-                <a href="/admin/users?archived=true" class="px-5 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Archived</a>
-                <a href="/admin/users/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Add New User</a>
+                <a href="/users?archived=true" class="px-5 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Archived</a>
+                <a href="/users/invites" class="px-5 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Invite Users</a>
+                <a href="/users/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Add New User</a>
             }
             else
             {
-                <a href="/admin/users" class="px-5 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">← Active Users</a>
+                <a href="/users" class="px-5 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">← Active Users</a>
             }
         </div>
     </div>
@@ -105,15 +106,15 @@
                                 {
                                     @if (!archived)
                                     {
-                                        <a href="/admin/users/@user.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
-                                        <form method="post" action="/admin/users/@user.Id/delete" onsubmit="return confirm('Archive this user?');" class="inline">
+                                        <a href="/users/@user.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
+                                        <form method="post" action="/users/@user.Id/delete" onsubmit="return confirm('Archive this user?');" class="inline">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 text-yellow-300 transition-all">Archive</button>
                                         </form>
                                     }
                                     else
                                     {
-                                        <form method="post" action="/admin/users/@user.Id/restore" onsubmit="return confirm('Restore this user?');" class="inline">
+                                        <form method="post" action="/users/@user.Id/restore" onsubmit="return confirm('Restore this user?');" class="inline">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all">Restore</button>
                                         </form>
@@ -136,7 +137,7 @@
         <div class="mt-6 flex items-center gap-2">
             @for (int i = 1; i <= totalPages; i++)
             {
-                <a href="/admin/users?page=@i&archived=@archived.ToString().ToLower()" class="px-4 py-2 text-xs font-bold rounded-xl @(i == currentPage ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
+                <a href="/users?page=@i&archived=@archived.ToString().ToLower()" class="px-4 py-2 text-xs font-bold rounded-xl @(i == currentPage ? "bg-orange-600 text-white" : "bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]") border border-white/[0.05] transition-all">@i</a>
             }
         </div>
     }

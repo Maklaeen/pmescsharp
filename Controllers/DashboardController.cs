@@ -26,21 +26,22 @@ public class DashboardController : Controller
     public IActionResult Index()
     {
         if (User.IsInRole("superadmin") || User.IsInRole("admin"))
-            return Redirect("/admin/dashboard");
+            return Redirect("/admin");
         if (User.IsInRole("planner"))
-            return Redirect("/planner/dashboard");
+            return Redirect("/planner");
         if (User.IsInRole("inventory"))
-            return Redirect("/inventory/dashboard");
+            return Redirect("/inventory");
         if (User.IsInRole("operator"))
-            return Redirect("/operator/dashboard");
+            return Redirect("/operator");
         if (User.IsInRole("qc"))
-            return Redirect("/qc/dashboard");
+            return Redirect("/qc");
 
         return View("NoRole");
     }
 
     [Authorize(Roles = "superadmin,admin")]
     [HttpGet("/admin/dashboard")]
+    [HttpGet("/admin")]
     public async Task<IActionResult> Admin()
     {
         var companyId = _currentCompany.CompanyId;
@@ -67,7 +68,7 @@ public class DashboardController : Controller
             Users = usersCount,
             Products = productsCount,
             Materials = materialsCount,
-            WorkOrdersDisplay = workOrdersCount > 0 ? workOrdersCount.ToString() : "-",
+            WorkOrdersDisplay = workOrdersCount.ToString(),
             CompanyName = isSuperAdmin || companyId <= 0 ? "" : company.Name,
             NeedsCompanyProfileSetup = !isSuperAdmin && companyId > 0 && profile is null,
         };
@@ -77,17 +78,21 @@ public class DashboardController : Controller
 
     [Authorize(Roles = "planner")]
     [HttpGet("/planner/dashboard")]
+    [HttpGet("/planner")]
     public IActionResult Planner() => View();
 
     [Authorize(Roles = "inventory")]
     [HttpGet("/inventory/dashboard")]
+    [HttpGet("/inventory")]
     public IActionResult Inventory() => View();
 
     [Authorize(Roles = "operator")]
     [HttpGet("/operator/dashboard")]
+    [HttpGet("/operator")]
     public IActionResult Operator() => View();
 
     [Authorize(Roles = "qc")]
     [HttpGet("/qc/dashboard")]
+    [HttpGet("/qc")]
     public IActionResult Qc() => View();
 }

@@ -32,6 +32,7 @@ public class InvitesController : Controller
     }
 
     [HttpGet("/admin/users/invites")]
+    [HttpGet("/users/invites")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
@@ -61,6 +62,7 @@ public class InvitesController : Controller
     }
 
     [HttpPost("/admin/users/invites")]
+    [HttpPost("/users/invites")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(InviteCreateViewModel model, CancellationToken cancellationToken)
     {
@@ -74,7 +76,7 @@ public class InvitesController : Controller
 
         if (!ModelState.IsValid)
         {
-            return Redirect("/admin/users/invites");
+            return Redirect("/users/invites");
         }
 
         var token = GenerateToken();
@@ -110,17 +112,18 @@ public class InvitesController : Controller
         {
             // Keep the invite row for troubleshooting but show an error to the user.
             TempData["Error"] = "Failed to send invite email. Please check SMTP settings.";
-            return Redirect("/admin/users/invites");
+            return Redirect("/users/invites");
         }
 
         await _audit.LogAsync("invite.create", "CompanyInvite", invite.Id.ToString(), $"Invited {invite.InvitedEmail} as {invite.Role} (exp {invite.ExpiresAt:O})", cancellationToken);
 
        // If SMTP isn't configured, the sender will throw and this action will show a friendly error.
         TempData["Success"] = "Invite sent.";
-        return Redirect("/admin/users/invites");
+        return Redirect("/users/invites");
     }
 
     [HttpPost("/admin/users/invites/{id:int}/revoke")]
+    [HttpPost("/users/invites/{id:int}/revoke")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Revoke(int id, CancellationToken cancellationToken)
     {
@@ -136,7 +139,7 @@ public class InvitesController : Controller
 
         await _audit.LogAsync("invite.revoke", "CompanyInvite", invite.Id.ToString(), $"Revoked invite for {invite.InvitedEmail}", cancellationToken);
         TempData["Success"] = "Invite revoked.";
-        return Redirect("/admin/users/invites");
+        return Redirect("/users/invites");
     }
 
     private static string GenerateToken()

@@ -113,7 +113,7 @@ public class AccountController : Controller
                 UserName = model.Email,
                 Email = model.Email,
                 FullName = model.Name,
-                EmailConfirmed = true,
+                EmailConfirmed = false,
                 CompanyId = company.Id,
               IsApproved = true,
                 ApprovedAt = DateTime.UtcNow,
@@ -138,6 +138,24 @@ public class AccountController : Controller
             await tx.CommitAsync(cancellationToken);
 
             await _signInManager.SignInAsync(user, isPersistent: false);
+
+            try
+            {
+                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                var encoded = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token));
+                var confirmUrl = Url.Action("ConfirmEmail", "Profile", new { userId = user.Id, token = encoded }, Request.Scheme);
+
+                await _email.SendAsync(
+                    user.Email!,
+                    "Verify your PMES email",
+                    $"""<p>Hi {System.Net.WebUtility.HtmlEncode(user.FullName ?? user.Email)},</p><p>Please verify your email by clicking the link below:</p><p><a href=\"{confirmUrl}\">Verify Email</a></p><p>If you did not create this account, you can ignore this email.</p>"""
+                );
+            }
+            catch
+            {
+                // Don't block registration if email sending fails.
+            }
+
             return Redirect("/subscription/setup");
         }
         catch (DbUpdateException)
@@ -277,10 +295,10 @@ public class AccountController : Controller
 
     private static string ResolveDashboardPath(IList<string> roles)
     {
-        if (roles.Contains("planner")) return "/planner/dashboard";
-        if (roles.Contains("inventory")) return "/inventory/dashboard";
-        if (roles.Contains("operator")) return "/operator/dashboard";
-        if (roles.Contains("qc")) return "/qc/dashboard";
-        return "/admin/dashboard";
+        if (roles.Contains("planner")) return "/planner";
+        if (roles.Contains("inventory")) return "/inventory";
+        if (roles.Contains("operator")) return "/operator";
+        if (roles.Contains("qc")) return "/qc";
+        return "/admin";
     }
 }

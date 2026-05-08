@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using PmesCSharp.Models;
 using PmesCSharp.ViewModels.Account;
+using System.Text;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace PmesCSharp.Controllers;
 
@@ -11,11 +13,13 @@ public class ProfileController : Controller
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly PmesCSharp.Services.EmailService _email;
 
-    public ProfileController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+    public ProfileController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, PmesCSharp.Services.EmailService email)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _email = email;
     }
 
     [HttpGet("/profile")]
@@ -89,6 +93,67 @@ public class ProfileController : Controller
         else
         {
             TempData["Error"] = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
+
+        return Redirect("/profile");
+    }
+
+    [HttpPost("/profile/email/send-verification")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendVerificationEmail()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Redirect("/login");
+
+        if (user.EmailConfirmed)
+        {
+            TempData["Success"] = "Your email is already verified.";
+            return Redirect("/profile");
+        }
+
+        try
+        {
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+            var confirmUrl = Url.Action("ConfirmEmail", "Profile", new { userId = user.Id, token = encoded }, Request.Scheme);
+
+            await _email.SendAsync(
+                user.Email!,
+                "Verify your PMES email",
+                $"""<p>Hi {System.Net.WebUtility.HtmlEncode(user.FullName ?? user.Email)},</p><p>Please verify your email by clicking the link below:</p><p><a href=\"{confirmUrl}\">Verify Email</a></p>"""
+            );
+
+            TempData["Success"] = "Verification email sent. Please check your inbox.";
+        }
+        catch
+        {
+            TempData["Error"] = "Failed to send verification email. Please try again later.";
+        }
+
+        return Redirect("/profile");
+    }
+
+    [HttpGet("/profile/confirm-email")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
+            return Redirect("/login");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return Redirect("/login");
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            var result = await _userManager.ConfirmEmailAsync(user, decoded);
+            TempData[result.Succeeded ? "Success" : "Error"] = result.Succeeded
+                ? "Email verified successfully."
+                : "Invalid or expired verification link.";
+        }
+        catch
+        {
+            TempData["Error"] = "Invalid or expired verification link.";
         }
 
         return Redirect("/profile");

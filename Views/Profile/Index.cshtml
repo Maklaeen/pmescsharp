@@ -55,7 +55,18 @@
         <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8 shadow-lg">
             <div class="flex items-center justify-between gap-4 flex-wrap">
                 <h2 class="font-bold text-white text-lg tracking-tight">Profile Information</h2>
-                <a href="/profile/edit" class="bg-orange-500 hover:bg-orange-600 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition">Edit Profile</a>
+                <div class="flex items-center gap-3">
+                    @if (!Model.EmailConfirmed)
+                    {
+                        <form method="post" action="/profile/email/send-verification" class="inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition">
+                                Verify Email
+                            </button>
+                        </form>
+                    }
+                    <a href="/profile/edit" class="bg-orange-500 hover:bg-orange-600 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition">Edit Profile</a>
+                </div>
             </div>
 
             <div class="mt-6 space-y-4">

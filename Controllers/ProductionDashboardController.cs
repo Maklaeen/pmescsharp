@@ -15,6 +15,8 @@ public class ProductionDashboardController : Controller
     public ProductionDashboardController(AppDbContext db) => _db = db;
 
     [HttpGet("/production/dashboard")]
+    [HttpGet("/production")]
+    [HttpGet("/progress")]
     public async Task<IActionResult> Index([FromQuery] int page = 1)
     {
         const int pageSize = 10;

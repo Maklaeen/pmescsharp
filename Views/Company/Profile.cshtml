@@ -23,7 +23,7 @@
 
     @if (User.IsInRole("superadmin") || User.IsInRole("admin"))
     {
-    <form method="post" action="/company/profile" class="space-y-5">
+    <form method="post" action="/company" class="space-y-5">
         @Html.AntiForgeryToken()
 
         <div>

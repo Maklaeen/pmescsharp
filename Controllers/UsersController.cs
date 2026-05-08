@@ -26,6 +26,7 @@ public class UsersController : Controller
     }
 
     [HttpGet("/admin/users")]
+    [HttpGet("/users")]
     public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] bool archived = false)
     {
         const int pageSize = 10;
@@ -53,6 +54,7 @@ public class UsersController : Controller
     }
 
     [HttpGet("/admin/users/pending")]
+    [HttpGet("/users/pending")]
     public async Task<IActionResult> Pending(CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
@@ -77,6 +79,7 @@ public class UsersController : Controller
     }
 
     [HttpPost("/admin/users/{id}/approve")]
+    [HttpPost("/users/{id}/approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(string id, CancellationToken cancellationToken)
     {
@@ -89,7 +92,7 @@ public class UsersController : Controller
         if (user.IsApproved)
         {
             TempData["Success"] = "User already approved.";
-            return Redirect("/admin/users/pending");
+            return Redirect("/users/pending");
         }
 
         user.IsApproved = true;
@@ -107,10 +110,11 @@ public class UsersController : Controller
         await _audit.LogAsync("user.approve", "User", user.Id, $"Approved {user.Email}; role={role}", cancellationToken);
 
         TempData["Success"] = "User approved.";
-        return Redirect("/admin/users/pending");
+        return Redirect("/users/pending");
     }
 
     [HttpPost("/admin/users/{id}/reject")]
+    [HttpPost("/users/{id}/reject")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(string id, CancellationToken cancellationToken)
     {
@@ -130,10 +134,11 @@ public class UsersController : Controller
 
         await _audit.LogAsync("user.reject", "User", user.Id, $"Rejected {user.Email}", cancellationToken);
         TempData["Success"] = "User rejected.";
-        return Redirect("/admin/users/pending");
+        return Redirect("/users/pending");
     }
 
     [HttpGet("/admin/users/create")]
+    [HttpGet("/users/create")]
     public IActionResult Create()
     {
         ViewBag.Roles = AllRoles;
@@ -141,6 +146,7 @@ public class UsersController : Controller
     }
 
     [HttpPost("/admin/users/create")]
+    [HttpPost("/users/create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Store(UserFormViewModel model)
     {
@@ -180,10 +186,11 @@ public class UsersController : Controller
             await _userManager.AddToRoleAsync(user, model.Role);
 
         TempData["Success"] = "User created successfully.";
-        return Redirect("/admin/users");
+        return Redirect("/users");
     }
 
     [HttpGet("/admin/users/{id}/edit")]
+    [HttpGet("/users/{id}/edit")]
     public async Task<IActionResult> Edit(string id)
     {
         var user = await _userManager.FindByIdAsync(id);
@@ -199,7 +206,7 @@ public class UsersController : Controller
         if (roles.Contains("superadmin") && !User.IsInRole("superadmin"))
         {
             TempData["Error"] = "You do not have permission to edit a superadmin account.";
-            return Redirect("/admin/users");
+            return Redirect("/users");
         }
         var vm = new UserFormViewModel
         {
@@ -214,6 +221,7 @@ public class UsersController : Controller
     }
 
     [HttpPost("/admin/users/{id}/edit")]
+    [HttpPost("/users/{id}/edit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(string id, UserFormViewModel model)
     {
@@ -235,7 +243,7 @@ public class UsersController : Controller
         if (targetRoles.Contains("superadmin") && !User.IsInRole("superadmin"))
         {
             TempData["Error"] = "You do not have permission to edit a superadmin account.";
-            return Redirect("/admin/users");
+            return Redirect("/users");
         }
 
         user.FullName = model.Name;
@@ -260,10 +268,11 @@ public class UsersController : Controller
         }
 
         TempData["Success"] = "User updated successfully.";
-        return Redirect("/admin/users");
+        return Redirect("/users");
     }
 
     [HttpPost("/admin/users/{id}/delete")]
+    [HttpPost("/users/{id}/delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Destroy(string id)
     {
@@ -276,7 +285,7 @@ public class UsersController : Controller
             if (roles.Contains("superadmin") && !User.IsInRole("superadmin"))
             {
                 TempData["Error"] = "You do not have permission to delete a superadmin account.";
-                return Redirect("/admin/users");
+                return Redirect("/users");
             }
 
             user.IsArchived = true;
@@ -285,10 +294,11 @@ public class UsersController : Controller
         }
 
         TempData["Success"] = "User archived.";
-        return Redirect("/admin/users");
+        return Redirect("/users");
     }
 
     [HttpPost("/admin/users/{id}/restore")]
+    [HttpPost("/users/{id}/restore")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Restore(string id)
     {
@@ -303,6 +313,6 @@ public class UsersController : Controller
         }
 
         TempData["Success"] = "User restored.";
-        return Redirect("/admin/users?archived=true");
+        return Redirect("/users?archived=true");
     }
 }
