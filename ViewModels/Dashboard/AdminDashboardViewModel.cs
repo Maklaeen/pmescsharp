@@ -11,4 +11,6 @@ public class AdminDashboardViewModel
     public int WorkOrdersInProgress { get; init; }
     public int SchedulesInProgress { get; init; }
     public int SchedulesCompleted { get; init; }
+
+    public bool NeedsCompanyProfileSetup { get; init; }
 }

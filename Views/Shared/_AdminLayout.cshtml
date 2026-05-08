@@ -219,18 +219,17 @@
                     Invitations
                 </a>
             }
-            <a href="/company/profile" class="sidebar-link @(IsActivePrefix("/company/profile") ? "active" : "")">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-8h6v8"/></svg>
-                Company Profile
-            </a>
             <a href="/settings" class="sidebar-link @(IsActivePrefix("/settings") ? "active" : "")">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 16v-2m6-6h2M4 12H6m12.364-5.364l1.414-1.414M4.222 19.778l1.414-1.414m0-12.728L4.222 4.222m15.556 15.556l-1.414-1.414M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
                 Settings
             </a>
-          <a href="/subscription" class="sidebar-link @(IsActivePrefix("/subscription") ? "active" : "")">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 1.343-3 3v1H8a2 2 0 00-2 2v4h12v-4a2 2 0 00-2-2h-1v-1c0-1.657-1.343-3-3-3z"/></svg>
-                Subscription
-            </a>
+            @if (roleName is "superadmin" or "admin")
+            {
+                <a href="/subscription" class="sidebar-link @(IsActivePrefix("/subscription") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 1.343-3 3v1H8a2 2 0 00-2 2v4h12v-4a2 2 0 00-2-2h-1v-1c0-1.657-1.343-3-3-3z"/></svg>
+                    Subscription
+                </a>
+            }
         </nav>
 
         <div class="p-6 border-t border-white/[0.05] bg-[#0c0c0e]">

@@ -45,6 +45,12 @@ public class JoinController : Controller
         return View(vm);
     }
 
+    [HttpGet("/join/pending")]
+    public IActionResult Pending()
+    {
+        return View();
+    }
+
     [HttpPost("/join/{token}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AcceptPost(string token, RegisterViewModel model)
@@ -70,6 +76,12 @@ public class JoinController : Controller
         var existing = await _userManager.FindByEmailAsync(invite.InvitedEmail);
         if (existing is not null)
         {
+            if (!existing.IsApproved)
+            {
+                TempData["Status"] = "Your account is already created. Please wait for admin approval.";
+                return Redirect("/join/pending");
+            }
+
             ModelState.AddModelError(string.Empty, "An account with this email already exists.");
             return View("Accept", model);
         }
@@ -81,8 +93,9 @@ public class JoinController : Controller
             FullName = model.Name,
             EmailConfirmed = true,
             CompanyId = invite.CompanyId,
-            IsApproved = true,
-            ApprovedAt = DateTime.UtcNow,
+            IsApproved = false,
+            ApprovedAt = null,
+            PendingRole = invite.Role,
         };
 
         var result = await _userManager.CreateAsync(user, model.Password);
@@ -93,14 +106,12 @@ public class JoinController : Controller
             return View("Accept", model);
         }
 
-        await _userManager.AddToRoleAsync(user, invite.Role);
-
         invite.UsesCount++;
         invite.ConsumedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        return Redirect("/dashboard");
+        TempData["Status"] = "Registration successful. Please wait for admin approval before logging in.";
+        return Redirect("/join/pending");
     }
 
     private static string HashToken(string token)

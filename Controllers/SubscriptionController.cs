@@ -9,7 +9,7 @@ using PmesCSharp.ViewModels.Subscription;
 
 namespace PmesCSharp.Controllers;
 
-[Authorize(Roles = "admin")]
+[Authorize(Roles = "superadmin,admin")]
 public class SubscriptionController : Controller
 {
     private readonly AppDbContext _db;

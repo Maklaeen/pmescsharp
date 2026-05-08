@@ -12,6 +12,17 @@
     var userDisplayName = string.IsNullOrWhiteSpace(user?.FullName) ? (user?.Email ?? "") : user!.FullName;
 }
 
+@if (Model.NeedsCompanyProfileSetup)
+{
+    <div class="mb-8 bg-orange-500/10 border border-orange-500/20 text-orange-300 text-sm px-6 py-4 rounded-2xl flex items-center justify-between gap-4 flex-wrap">
+        <div>
+            <div class="font-bold">Complete your company profile</div>
+            <div class="text-xs text-orange-200/80 mt-0.5">Your company profile is not set up yet. Please add your company details.</div>
+        </div>
+        <a href="/company/profile" class="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition-all">Setup Company Profile</a>
+    </div>
+}
+
 <div class="bg-gray-900/40 border border-gray-800/50 rounded-2xl p-8 mb-8">
     <div class="flex items-center justify-between gap-4 flex-wrap">
         <div>

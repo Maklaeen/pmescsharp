@@ -1,0 +1,47 @@
+@model PmesCSharp.Models.ApplicationUser
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Edit Profile";
+}
+
+<div class="w-full flex justify-center pb-24">
+    <div class="w-full max-w-2xl space-y-8 mx-auto">
+
+        @if (TempData["Success"] is string success)
+        {
+            <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl text-center">
+                @success
+            </div>
+        }
+        @if (TempData["Error"] is string error)
+        {
+            <div class="bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl text-center">
+                @error
+            </div>
+        }
+
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8 shadow-lg">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+                <h2 class="font-bold text-white text-lg tracking-tight">Update Information</h2>
+                <a href="/profile" class="bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 text-xs font-bold rounded-xl border border-white/[0.05] transition-all px-5 py-2.5">Back</a>
+            </div>
+
+            <form method="post" action="/profile/update" class="space-y-4 mt-6">
+                @Html.AntiForgeryToken()
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1.5">Full Name</label>
+                    <input type="text" name="Name" value="@(Model.FullName ?? "")" required
+                           class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1.5">Email Address</label>
+                    <input type="email" name="Email" value="@Model.Email" required
+                           class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                </div>
+                <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition">
+                    Save Changes
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

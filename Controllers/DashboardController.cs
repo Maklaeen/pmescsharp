@@ -46,6 +46,14 @@ public class DashboardController : Controller
         var companyId = _currentCompany.CompanyId;
         var isSuperAdmin = User.IsInRole("superadmin");
 
+        CompanyProfile? profile = null;
+        Company company = null!;
+        if (!isSuperAdmin && companyId > 0)
+        {
+            company = await _db.Companies.AsNoTracking().FirstAsync(c => c.Id == companyId);
+            profile = await _db.CompanyProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.CompanyId == companyId);
+        }
+
         var usersCount = isSuperAdmin || companyId <= 0
             ? await _userManager.Users.CountAsync()
             : await _userManager.Users.Where(u => u.CompanyId == companyId).CountAsync();
@@ -60,6 +68,8 @@ public class DashboardController : Controller
             Products = productsCount,
             Materials = materialsCount,
             WorkOrdersDisplay = workOrdersCount > 0 ? workOrdersCount.ToString() : "-",
+            CompanyName = isSuperAdmin || companyId <= 0 ? "" : company.Name,
+            NeedsCompanyProfileSetup = !isSuperAdmin && companyId > 0 && profile is null,
         };
 
         return View(model);

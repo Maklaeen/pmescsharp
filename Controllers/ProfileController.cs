@@ -26,6 +26,14 @@ public class ProfileController : Controller
         return View(user);
     }
 
+    [HttpGet("/profile/edit")]
+    public async Task<IActionResult> Edit()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Redirect("/login");
+        return View(user);
+    }
+
     [HttpPost("/profile/update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(UpdateProfileViewModel model)
