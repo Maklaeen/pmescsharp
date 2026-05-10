@@ -3,59 +3,210 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Subscription Setup";
+    var hasStripe = !string.IsNullOrWhiteSpace(Model.StripePublishableKey);
 }
 
-<div class="max-w-3xl">
-    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <h2 class="text-2xl font-extrabold text-white tracking-tight">Start your free trial</h2>
-        <p class="text-sm text-gray-500 mt-2">Choose a plan. Your company will start with a 30-day trial. Payments can be enabled later.</p>
+<div class="max-w-2xl mx-auto">
 
-        <form method="post" action="/subscription/setup" class="mt-10 space-y-6">
-            @Html.AntiForgeryToken()
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label class="block p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <div class="text-sm font-bold text-white">Standard</div>
-                            <div class="text-xs text-gray-500 mt-1">Core MES features for small teams</div>
-                        </div>
-                        <input type="radio" name="Plan" value="Standard" @(Model.Plan == SubscriptionPlan.Standard ? "checked" : "") />
-                    </div>
-                    <ul class="mt-4 text-xs text-gray-500 space-y-1">
-                        <li>• Production schedules & work orders</li>
-                        <li>• Inventory movements</li>
-                        <li>• QC inspections</li>
-                        <li>• Basic dashboards & audit logs</li>
-                    </ul>
-                </label>
-
-                <label class="block p-5 rounded-2xl border border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 cursor-pointer">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <div class="text-sm font-bold text-white">Pro</div>
-                            <div class="text-xs text-gray-500 mt-1">Advanced controls & visibility</div>
-                        </div>
-                        <input type="radio" name="Plan" value="Pro" @(Model.Plan == SubscriptionPlan.Pro ? "checked" : "") />
-                    </div>
-                    <ul class="mt-4 text-xs text-gray-500 space-y-1">
-                        <li>• Everything in Standard</li>
-                        <li>• Production costing / reports</li>
-                        <li>• Advanced audit & approvals</li>
-                        <li>• Priority support & onboarding</li>
-                    </ul>
-                </label>
+    @if (!ViewData.ModelState.IsValid)
+    {
+        var errors = ViewData.ModelState.Values.SelectMany(v => v.Errors).ToList();
+        if (errors.Count > 0)
+        {
+            <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">
+                @errors[0].ErrorMessage
             </div>
+        }
+    }
 
-            <div>
-                <label class="block text-sm font-semibold text-gray-300 mb-1.5">Billing email (optional)</label>
-                <input name="BillingEmail" type="email" value="@Model.BillingEmail" class="w-full bg-white/[0.03] border border-white/[0.06] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="billing@company.com" />
-                <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.BillingEmail)</span>
-            </div>
-
-            <button type="submit" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
-                Start 30-day trial
-            </button>
-        </form>
+    <div class="mb-8">
+        <h2 class="text-3xl font-extrabold text-white tracking-tight">Choose your plan</h2>
+        <p class="text-gray-500 text-sm mt-2">Start with a 30-day free trial. Cancel anytime.</p>
     </div>
+
+    <!-- Plan Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8" id="plan-cards">
+
+        <label id="card-standard" class="relative block p-6 rounded-2xl border-2 border-orange-500 bg-orange-500/5 cursor-pointer transition-all">
+            <input type="radio" name="_plan" value="Standard" class="sr-only" checked />
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="text-base font-bold text-white">Standard</div>
+                    <div class="text-xs text-gray-500 mt-0.5">For small teams</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-extrabold text-white">$29<span class="text-sm font-normal text-gray-500">/mo</span></div>
+                </div>
+            </div>
+            <ul class="mt-4 space-y-1.5 text-xs text-gray-400">
+                <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Production schedules & work orders</li>
+                <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Inventory movements</li>
+                <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>QC inspections</li>
+                <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Basic dashboards & audit logs</li>
+            </ul>
+            <div id="check-standard" class="absolute top-4 right-4 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </div>
+        </label>
+
+        <label id="card-pro" class="relative block p-6 rounded-2xl border-2 border-white/10 bg-white/[0.02] cursor-pointer transition-all hover:border-white/20">
+            <input type="radio" name="_plan" value="Pro" class="sr-only" />
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="text-base font-bold text-white flex items-center gap-2">
+                        Pro
+                        <span class="text-[10px] font-bold bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full uppercase tracking-wider">Popular</span>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-0.5">Advanced controls</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-extrabold text-white">$49<span class="text-sm font-normal text-gray-500">/mo</span></div>
+                </div>
+            </div>
+            <ul class="mt-4 space-y-1.5 text-xs text-gray-400">
+                <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Everything in Standard</li>
+                <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Production costing & reports</li>
+                <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Advanced audit & approvals</li>
+                <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Priority support & onboarding</li>
+            </ul>
+            <div id="check-pro" class="absolute top-4 right-4 w-5 h-5 bg-orange-500 rounded-full items-center justify-center hidden">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </div>
+        </label>
+
+    </div>
+
+    <!-- Checkout Form -->
+    <form method="post" action="/subscription/setup" id="setup-form" class="bg-[#111114] border border-white/[0.05] rounded-2xl p-6 space-y-5">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Plan" id="PlanInput" value="Standard" />
+        <input type="hidden" name="PaymentIntentId" id="PaymentIntentId" value="" />
+
+        <div>
+            <label class="block text-sm font-semibold text-gray-300 mb-1.5">Billing email</label>
+            <input name="BillingEmail" type="email" value="@Model.BillingEmail"
+                   class="w-full bg-white/[0.03] border border-white/[0.08] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                   placeholder="billing@company.com" />
+            <span class="text-red-400 text-xs mt-1 block">@Html.ValidationMessageFor(m => m.BillingEmail)</span>
+        </div>
+
+        @if (hasStripe)
+        {
+            <div>
+                <label class="block text-sm font-semibold text-gray-300 mb-1.5">Card details</label>
+                <div id="card-element" class="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3"></div>
+                <div id="card-errors" class="text-red-400 text-xs mt-1.5"></div>
+            </div>
+        }
+
+        <div class="flex items-center justify-between pt-2">
+            <div class="text-xs text-gray-600">
+                @if (hasStripe)
+                {
+                    <span>🔒 Secured by Stripe · Test mode</span>
+                }
+                else
+                {
+                    <span>30-day free trial · No credit card required</span>
+                }
+            </div>
+            <button type="submit" id="submit-btn"
+                    class="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
+                @(hasStripe ? "Pay & Activate" : "Start Free Trial")
+            </button>
+        </div>
+    </form>
+
 </div>
+
+@section Scripts {
+    @if (hasStripe)
+    {
+        <script src="https://js.stripe.com/v3/"></script>
+        <script>
+            (function () {
+                var stripe = Stripe('@Model.StripePublishableKey');
+                var elements = stripe.elements({ appearance: { theme: 'night' } });
+                var cardEl = elements.create('card', {
+                    style: { base: { color: '#fff', fontSize: '14px', '::placeholder': { color: '#6b7280' } } }
+                });
+                cardEl.mount('#card-element');
+                cardEl.on('change', function (e) {
+                    document.getElementById('card-errors').textContent = e.error ? e.error.message : '';
+                });
+
+                var selectedPlan = 'Standard';
+                var clientSecret = null;
+
+                function selectPlan(plan) {
+                    selectedPlan = plan;
+                    document.getElementById('PlanInput').value = plan;
+                    clientSecret = null;
+
+                    var isStandard = plan === 'Standard';
+                    document.getElementById('card-standard').classList.toggle('border-orange-500', isStandard);
+                    document.getElementById('card-standard').classList.toggle('bg-orange-500/5', isStandard);
+                    document.getElementById('card-standard').classList.toggle('border-white/10', !isStandard);
+                    document.getElementById('card-standard').classList.toggle('bg-white/[0.02]', !isStandard);
+                    document.getElementById('check-standard').classList.toggle('hidden', !isStandard);
+
+                    document.getElementById('card-pro').classList.toggle('border-orange-500', !isStandard);
+                    document.getElementById('card-pro').classList.toggle('bg-orange-500/5', !isStandard);
+                    document.getElementById('card-pro').classList.toggle('border-white/10', isStandard);
+                    document.getElementById('card-pro').classList.toggle('bg-white/[0.02]', isStandard);
+                    document.getElementById('check-pro').classList.toggle('hidden', isStandard);
+                    document.getElementById('check-pro').classList.toggle('flex', !isStandard);
+                }
+
+                document.querySelectorAll('input[name="_plan"]').forEach(function (radio) {
+                    radio.addEventListener('change', function () { selectPlan(this.value); });
+                });
+
+                document.getElementById('card-standard').addEventListener('click', function () { selectPlan('Standard'); });
+                document.getElementById('card-pro').addEventListener('click', function () { selectPlan('Pro'); });
+
+                async function getClientSecret() {
+                    var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                    var res = await fetch('/subscription/setup/payment-intent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                        body: JSON.stringify({ plan: selectedPlan })
+                    });
+                    var data = await res.json();
+                    return data.clientSecret;
+                }
+
+                document.getElementById('setup-form').addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    var btn = document.getElementById('submit-btn');
+                    btn.disabled = true;
+                    btn.textContent = 'Processing...';
+
+                    try {
+                        if (!clientSecret) {
+                            clientSecret = await getClientSecret();
+                        }
+
+                        var result = await stripe.confirmCardPayment(clientSecret, {
+                            payment_method: { card: cardEl }
+                        });
+
+                        if (result.error) {
+                            document.getElementById('card-errors').textContent = result.error.message;
+                            btn.disabled = false;
+                            btn.textContent = 'Pay & Activate';
+                            return;
+                        }
+
+                        document.getElementById('PaymentIntentId').value = result.paymentIntent.id;
+                        this.submit();
+                    } catch (err) {
+                        document.getElementById('card-errors').textContent = 'Something went wrong. Please try again.';
+                        btn.disabled = false;
+                        btn.textContent = 'Pay & Activate';
+                    }
+                });
+            })();
+        </script>
+    }
+}

@@ -39,9 +39,9 @@ public class SmtpEmailSender : IEmailSender
         {
             Subject = subject,
             Body = body,
-          SubjectEncoding = Encoding.UTF8,
+            SubjectEncoding = Encoding.UTF8,
             BodyEncoding = Encoding.UTF8,
-            IsBodyHtml = false
+            IsBodyHtml = true
         };
 
         using var client = new SmtpClient(host, port)

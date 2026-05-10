@@ -13,4 +13,7 @@ public class LoginViewModel
     public string Password { get; set; } = "";
 
     public bool RememberMe { get; set; }
+
+    // Google reCAPTCHA response token (v2/v3). When Recaptcha:SecretKey isn't configured, verification is skipped.
+    public string? RecaptchaToken { get; set; }
 }

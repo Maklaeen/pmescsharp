@@ -13,10 +13,22 @@ public class HomeController : Controller
     [HttpGet("/privacy")]
     public IActionResult Privacy() => View();
 
+    [HttpGet("/error")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+    }
+
+    [HttpGet("/error/{statusCode:int}")]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult StatusCodeError(int statusCode)
+    {
+        return statusCode switch
+        {
+            404 => View("NotFound"),
+            _ => View("Error", new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier })
+        };
     }
 
     [HttpGet("/offline")]

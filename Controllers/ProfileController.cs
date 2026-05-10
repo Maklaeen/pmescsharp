@@ -35,6 +35,14 @@ public class ProfileController : Controller
     {
         var user = await _userManager.GetUserAsync(User);
         if (user is null) return Redirect("/login");
+        ViewBag.UpdateModel = new PmesCSharp.ViewModels.Account.UpdateProfileViewModel
+        {
+            Name = user.FullName ?? "",
+            Email = user.Email ?? "",
+            DateOfBirth = user.DateOfBirth,
+            MobileNumber = user.MobileNumber,
+            Sex = user.Sex,
+        };
         return View(user);
     }
 
@@ -56,6 +64,9 @@ public class ProfileController : Controller
         user.UserName = model.Email;
         user.NormalizedEmail = model.Email.ToUpperInvariant();
         user.NormalizedUserName = model.Email.ToUpperInvariant();
+        user.DateOfBirth = model.DateOfBirth;
+        user.MobileNumber = string.IsNullOrWhiteSpace(model.MobileNumber) ? null : model.MobileNumber.Trim();
+        user.Sex = string.IsNullOrWhiteSpace(model.Sex) ? null : model.Sex.Trim();
 
         var result = await _userManager.UpdateAsync(user);
         if (result.Succeeded)

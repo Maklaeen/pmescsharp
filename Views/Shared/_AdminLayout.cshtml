@@ -1,10 +1,20 @@
 @using Microsoft.AspNetCore.Identity
 @using PmesCSharp.Models
+@using Microsoft.EntityFrameworkCore
 @inject UserManager<ApplicationUser> UserManager
+@inject PmesCSharp.Data.AppDbContext DbContext
 @{
     var currentUser = await UserManager.GetUserAsync(User);
     var roles = currentUser is null ? new List<string>() : (await UserManager.GetRolesAsync(currentUser)).ToList();
     var roleName = roles.FirstOrDefault() ?? "superadmin";
+
+    // Load theme from DB server-side so it's consistent across all pages
+    var userTheme = "dark";
+    if (currentUser is not null)
+    {
+        var setting = await DbContext.UserSettings.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == currentUser.Id);
+        userTheme = setting?.Theme ?? "dark";
+    }
 
     var dashboardPath = roleName switch
     {
@@ -30,9 +40,23 @@
 
     var displayName = string.IsNullOrWhiteSpace(currentUser?.FullName) ? (currentUser?.Email ?? "") : currentUser!.FullName;
     var initials = new string(displayName.Take(2).ToArray()).ToUpperInvariant();
+
+    // Greeting based on time and sex
+    var hour = DateTime.Now.Hour;
+    var timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    var honorific = currentUser?.Sex == "Female" ? "Ms." : currentUser?.Sex == "Male" ? "Mr." : "";
+    var firstName = displayName.Split(' ').FirstOrDefault() ?? displayName;
+    var greeting = string.IsNullOrWhiteSpace(honorific)
+        ? $"{timeGreeting}, {firstName}!"
+        : $"{timeGreeting}, {honorific} {firstName}!";
+
+    // Replace dashboard titles with greeting
+    var pageTitle = ViewData["Title"] as string ?? "Dashboard";
+    var isDashboard = pageTitle.Contains("Dashboard", StringComparison.OrdinalIgnoreCase);
+    var displayTitle = isDashboard ? greeting : pageTitle;
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="@(userTheme == "light" ? "theme-light" : "")">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -46,8 +70,7 @@
                 font-family: 'Plus Jakarta Sans', sans-serif;
                 @@apply bg-[#0c0c0e] text-gray-200;
             }
-
-            body.theme-light {
+            .theme-light body, body.theme-light {
                 @@apply bg-gray-100 text-gray-900;
             }
         }
@@ -62,40 +85,232 @@
                 content: '';
                 @@apply absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-orange-500 rounded-r-full;
             }
-            .custom-scrollbar::-webkit-scrollbar {
-                width: 4px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-track {
-                background: transparent;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb {
-                @@apply bg-gray-800 rounded-full;
-            }
-
-            body.theme-light .sidebar-link {
-                @@apply text-gray-600 hover:text-gray-900;
-            }
-            body.theme-light .sidebar-link.active {
-                @@apply text-orange-600 bg-orange-500/10;
-            }
-            body.theme-light aside {
-                @@apply bg-white border-gray-200;
-            }
-            body.theme-light header {
-                @@apply border-gray-200;
-            }
-            body.theme-light main {
-                @@apply bg-gray-100;
-            }
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { @@apply bg-gray-800 rounded-full; }
         }
+    </style>
+    <style>
+        /* Light mode overrides for all hardcoded dark elements */
+        .theme-light body {
+            background-color: #f3f4f6 !important;
+            color: #111827 !important;
+        }
+        .theme-light aside {
+            background-color: #ffffff !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light aside .bg-\[\#0c0c0e\] {
+            background-color: #ffffff !important;
+        }
+        .theme-light header {
+            background-color: #ffffff !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light main {
+            background-color: #f3f4f6 !important;
+        }
+        .theme-light .flex-1.flex.flex-col.min-w-0 {
+            background-color: #f3f4f6 !important;
+        }
+        /* Sidebar text */
+        .theme-light .sidebar-link {
+            color: #4b5563 !important;
+        }
+        .theme-light .sidebar-link:hover {
+            color: #111827 !important;
+            background-color: rgba(0,0,0,0.05) !important;
+        }
+        .theme-light .sidebar-link.active {
+            color: #ea580c !important;
+            background-color: rgba(234,88,12,0.1) !important;
+        }
+        /* Sidebar section labels */
+        .theme-light .text-gray-700 { color: #9ca3af !important; }
+        /* Sidebar logo area */
+        .theme-light aside .text-white { color: #111827 !important; }
+        .theme-light aside .text-gray-600 { color: #6b7280 !important; }
+        /* User card at bottom of sidebar */
+        .theme-light aside .bg-white\/\[0\.03\] {
+            background-color: #f9fafb !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light aside .border-white\/\[0\.05\] {
+            border-color: #e5e7eb !important;
+        }
+        /* Header text */
+        .theme-light header .text-white { color: #111827 !important; }
+        .theme-light header .text-gray-500 { color: #6b7280 !important; }
+        .theme-light header .bg-gray-900 {
+            background-color: #f3f4f6 !important;
+            border-color: #e5e7eb !important;
+        }
+        /* Cards and panels */
+        .theme-light .bg-\[\#111114\] {
+            background-color: #ffffff !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light .bg-white\/\[0\.02\],
+        .theme-light .bg-white\/\[0\.03\] {
+            background-color: #f9fafb !important;
+        }
+        .theme-light .border-white\/\[0\.05\],
+        .theme-light .border-white\/\[0\.06\],
+        .theme-light .border-white\/\[0\.08\] {
+            border-color: #e5e7eb !important;
+        }
+        /* Text colors */
+        .theme-light .text-white { color: #111827 !important; }
+        .theme-light .text-gray-200 { color: #374151 !important; }
+        .theme-light .text-gray-300 { color: #4b5563 !important; }
+        .theme-light .text-gray-400 { color: #6b7280 !important; }
+        .theme-light .text-gray-500 { color: #9ca3af !important; }
+        /* Table/list rows */
+        .theme-light .bg-gray-900\/40 {
+            background-color: #ffffff !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light .bg-gray-800\/50,
+        .theme-light .bg-gray-800 {
+            background-color: #f3f4f6 !important;
+        }
+        .theme-light .border-gray-800,
+        .theme-light .border-gray-700 {
+            border-color: #e5e7eb !important;
+        }
+        /* Inputs */
+        .theme-light input, .theme-light select, .theme-light textarea {
+            background-color: #ffffff !important;
+            border-color: #d1d5db !important;
+            color: #111827 !important;
+        }
+        /* Scrollbar */
+        .theme-light .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #d1d5db !important;
+        }
+        /* Table rows */
+        .theme-light tr.bg-white\/\[0\.02\],
+        .theme-light tr.hover\:bg-white\/\[0\.05\]:hover {
+            background-color: #f9fafb !important;
+        }
+        .theme-light td, .theme-light th {
+            border-color: #e5e7eb !important;
+        }
+        .theme-light .divide-y > * {
+            border-color: #e5e7eb !important;
+        }
+        /* Hover states that turn white in dark mode */
+        .theme-light .hover\:text-white:hover,
+        .theme-light .group-hover\:text-white {
+            color: #111827 !important;
+        }
+        .theme-light .hover\:bg-white\/5:hover,
+        .theme-light .hover\:bg-white\/\[0\.05\]:hover,
+        .theme-light .hover\:bg-white\/\[0\.08\]:hover {
+            background-color: rgba(0,0,0,0.05) !important;
+        }
+        /* Progress bar track */
+        .theme-light .bg-white\/\[0\.06\] {
+            background-color: #e5e7eb !important;
+        }
+        /* Stat cards hover */
+        .theme-light .hover\:bg-\[\#16161a\]:hover {
+            background-color: #f3f4f6 !important;
+        }
+        /* Border separators */
+        .theme-light .border-gray-800\/50,
+        .theme-light .border-gray-800\/60,
+        .theme-light .border-gray-800\/40 {
+            border-color: #e5e7eb !important;
+        }
+        /* Mono/code text */
+        .theme-light .font-mono { color: #374151 !important; }
+        /* Pagination buttons */
+        .theme-light a.bg-white\/\[0\.03\],
+        .theme-light button.bg-white\/\[0\.03\] {
+            background-color: #f3f4f6 !important;
+            color: #374151 !important;
+        }
+        /* Catch-all: any remaining white/light text inside main content */
+        .theme-light main .text-white { color: #111827 !important; }
+        .theme-light main .text-gray-100 { color: #1f2937 !important; }
+        .theme-light main .text-gray-200 { color: #374151 !important; }
+        .theme-light main .text-gray-300 { color: #4b5563 !important; }
+        .theme-light main .text-gray-400 { color: #6b7280 !important; }
+        .theme-light main .text-gray-500 { color: #6b7280 !important; }
+        .theme-light main .text-gray-600 { color: #4b5563 !important; }
+        /* Quick action items */
+        .theme-light main .group-hover\:text-orange-500 { color: #ea580c !important; }
+        /* Session info borders */
+        .theme-light main .border-b { border-color: #e5e7eb !important; }
+        /* Skeleton overlay bg */
+        #page-loader-skeleton { background: #0c0c0e; }
+        .theme-light #page-loader-skeleton { background: #f3f4f6 !important; }
+        /* Skeleton shimmer */
+        @@ keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+            border-radius: 8px;
+        }
+        .theme-light .skeleton {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f9fafb 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+        }
+        /* Page loading overlay */
+        #page-loader {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        #page-loader.active { display: block; }
+        #page-loader-bar {
+            position: fixed;
+            top: 0; left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, #ea580c, #f97316);
+            border-radius: 0 2px 2px 0;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px rgba(234,88,12,0.6);
+        }
+        #page-loader-skeleton {
+            position: fixed;
+            top: 80px;
+            left: 288px;
+            right: 0;
+            bottom: 0;
+            padding: 32px;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            background: #0c0c0e;
+            overflow: hidden;
+        }
+        .theme-light #page-loader-skeleton {
+            background: #f3f4f6;
+        }
+        #page-loader.active #page-loader-skeleton { display: flex; }
+        .sk-header { height: 28px; width: 220px; }
+        .sk-subheader { height: 16px; width: 160px; margin-top: -8px; }
+        .sk-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .sk-card { height: 130px; border-radius: 20px; }
+        .sk-table-header { height: 14px; width: 100%; border-radius: 6px; }
+        .sk-row { height: 60px; border-radius: 14px; }
+        .sk-row-sm { height: 44px; border-radius: 12px; }
     </style>
 
     <script>
+        // Sync localStorage with server-side theme so it's consistent
         (function () {
-            try {
-                var theme = localStorage.getItem('theme') || 'dark';
-                if (theme === 'light') document.body.classList.add('theme-light');
-            } catch (e) { }
+            try { localStorage.setItem('theme', '@userTheme'); } catch (e) { }
         })();
     </script>
 </head>
@@ -125,11 +340,11 @@
                 <div class="px-4 mb-4 mt-10">
                     <p class="text-[11px] font-bold text-gray-700 uppercase tracking-[0.25em]">Master Data</p>
                 </div>
-                <a href="/users" class="sidebar-link @(IsActivePrefix("/users") || IsActivePrefix("/admin/users") ? "active" : "")">
+                <a href="/users" class="sidebar-link @(IsActivePrefix("/users") ? "active" : "")">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                     Users
                 </a>
-                <a href="/users/invites" class="sidebar-link @(IsActivePrefix("/users/invites") || IsActivePrefix("/admin/users/invites") ? "active" : "")">
+                <a href="/users/invites" class="sidebar-link @(IsActivePrefix("/users/invites") ? "active" : "")">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h6m-6 4h6M4 8h8M4 12h8m-8 4h8"/></svg>
                     User Invites
                 </a>
@@ -250,7 +465,7 @@
 
     <div class="flex-1 flex flex-col min-w-0 bg-[#0c0c0e]">
         <header class="h-20 border-b border-gray-800/50 px-8 flex items-center justify-between flex-shrink-0">
-            <h1 class="text-2xl font-bold text-white tracking-tight">@(ViewData["Title"] ?? "Dashboard")</h1>
+            <h1 class="text-2xl font-bold text-white tracking-tight">@displayTitle</h1>
             <div class="flex items-center gap-4">
                 <div class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full">
                     <div class="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
@@ -293,5 +508,85 @@
 </script>
 
 @await RenderSectionAsync("Scripts", required: false)
+
+<!-- Page loader -->
+<div id="page-loader">
+    <div id="page-loader-bar"></div>
+    <div id="page-loader-skeleton">
+        <div class="sk-header skeleton"></div>
+        <div class="sk-subheader skeleton"></div>
+        <div class="sk-cards">
+            <div class="sk-card skeleton"></div>
+            <div class="sk-card skeleton"></div>
+            <div class="sk-card skeleton"></div>
+            <div class="sk-card skeleton"></div>
+        </div>
+        <div class="sk-table-header skeleton"></div>
+        <div class="sk-row skeleton"></div>
+        <div class="sk-row skeleton"></div>
+        <div class="sk-row skeleton"></div>
+        <div class="sk-row-sm skeleton"></div>
+        <div class="sk-row-sm skeleton"></div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var loader = document.getElementById('page-loader');
+        var bar = document.getElementById('page-loader-bar');
+        var timer, barTimer;
+
+        function showLoader() {
+            loader.classList.add('active');
+            bar.style.width = '0%';
+            // Animate bar to 80% quickly, then slow down
+            clearTimeout(barTimer);
+            setTimeout(function () { bar.style.width = '60%'; }, 50);
+            barTimer = setTimeout(function () { bar.style.width = '80%'; }, 400);
+        }
+
+        function hideLoader() {
+            bar.style.width = '100%';
+            setTimeout(function () {
+                loader.classList.remove('active');
+                bar.style.width = '0%';
+            }, 300);
+        }
+
+        // Show skeleton on navigation links (not forms, not external, not anchors)
+        document.addEventListener('click', function (e) {
+            var el = e.target.closest('a[href]');
+            if (!el) return;
+            var href = el.getAttribute('href');
+            if (!href || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('mailto')) return;
+            if (el.target === '_blank') return;
+            try {
+                var url = new URL(href, window.location.origin);
+                if (url.origin !== window.location.origin) return;
+                // Don't show for same page
+                if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+            } catch (err) { return; }
+            showLoader();
+        });
+
+        // Show on form submit (POST navigations)
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            // Skip forms that use fetch/ajax
+            if (form.dataset.noLoader) return;
+            showLoader();
+        });
+
+        // Hide on page show (back/forward cache)
+        window.addEventListener('pageshow', function (e) {
+            hideLoader();
+        });
+
+        // Hide if page load completes (safety net)
+        window.addEventListener('load', function () {
+            hideLoader();
+        });
+    })();
+</script>
 </body>
 </html>

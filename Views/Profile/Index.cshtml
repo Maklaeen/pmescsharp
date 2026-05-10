@@ -78,6 +78,20 @@
                     <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">Email</div>
                     <div class="mt-1 text-sm font-semibold text-white">@(Model.Email ?? "—")</div>
                 </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
+                        <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">Date of Birth</div>
+                        <div class="mt-1 text-sm font-semibold text-white">@(Model.DateOfBirth?.ToString("MMMM dd, yyyy") ?? "—")</div>
+                    </div>
+                    <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
+                        <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">Mobile Number</div>
+                        <div class="mt-1 text-sm font-semibold text-white">@(Model.MobileNumber ?? "—")</div>
+                    </div>
+                    <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
+                        <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">Sex</div>
+                        <div class="mt-1 text-sm font-semibold text-white">@(Model.Sex ?? "—")</div>
+                    </div>
+                </div>
             </div>
         </div>
 

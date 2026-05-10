@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using PmesCSharp.Data;
 using PmesCSharp.Models;
 using PmesCSharp.ViewModels.Account;
+using System.Security.Claims;
 
 namespace PmesCSharp.Controllers;
 
@@ -15,19 +16,22 @@ public class AccountController : Controller
     private readonly IConfiguration _configuration;
     private readonly AppDbContext _db;
     private readonly PmesCSharp.Services.EmailService _email;
+    private readonly PmesCSharp.Services.IRecaptchaService _recaptcha;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
         AppDbContext db,
-        PmesCSharp.Services.EmailService email)
+        PmesCSharp.Services.EmailService email,
+        PmesCSharp.Services.IRecaptchaService recaptcha)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _configuration = configuration;
        _db = db;
         _email = email;
+        _recaptcha = recaptcha;
     }
 
     [HttpGet("/login")]
@@ -41,6 +45,17 @@ public class AccountController : Controller
     {
         if (!ModelState.IsValid)
         {
+            return View(model);
+        }
+
+        var captchaOk = await _recaptcha.VerifyAsync(
+            model.RecaptchaToken,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            cancellationToken);
+
+        if (!captchaOk)
+        {
+            ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
             return View(model);
         }
 
@@ -82,6 +97,17 @@ public class AccountController : Controller
     {
         if (!ModelState.IsValid)
         {
+            return View(model);
+        }
+
+        var captchaOk = await _recaptcha.VerifyAsync(
+            model.RecaptchaToken,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            cancellationToken);
+
+        if (!captchaOk)
+        {
+            ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
             return View(model);
         }
 
@@ -166,6 +192,79 @@ public class AccountController : Controller
         }
     }
 
+    [HttpGet("/signin-google")]
+    [AllowAnonymous]
+    public IActionResult SignInWithGoogle([FromQuery] string? returnUrl = null)
+    {
+        returnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/dashboard" : returnUrl;
+        var props = _signInManager.ConfigureExternalAuthenticationProperties("Google",
+            Url.Action(nameof(GoogleCallback), "Account", new { returnUrl }, Request.Scheme)!);
+        return Challenge(props, "Google");
+    }
+
+    [HttpGet("/signin-google/callback")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GoogleCallback([FromQuery] string? returnUrl = null, [FromQuery] string? remoteError = null)
+    {
+        returnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/dashboard" : returnUrl;
+
+        if (!string.IsNullOrWhiteSpace(remoteError))
+        {
+            TempData["Status"] = "Google sign-in failed. Please try again.";
+            return Redirect("/login");
+        }
+
+        ExternalLoginInfo? info;
+        try
+        {
+            info = await _signInManager.GetExternalLoginInfoAsync();
+        }
+        catch
+        {
+            TempData["Status"] = "Google sign-in failed. Please try again.";
+            return Redirect("/login");
+        }
+        if (info is null)
+        {
+            TempData["Status"] = "Google sign-in failed. Please try again.";
+            return Redirect("/login");
+        }
+
+        var email = info.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.Email)
+            ?? info.Principal.FindFirstValue("email");
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            TempData["Status"] = "Google sign-in failed (missing email).";
+            return Redirect("/login");
+        }
+
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            TempData["Status"] = "No PMES account found for this Google email. Please register first.";
+            return Redirect("/register");
+        }
+
+        if (!user.IsApproved)
+        {
+            TempData["Status"] = "Your account is pending admin approval.";
+            return Redirect("/login");
+        }
+
+        // Link external login to existing account if not yet linked.
+        var linked = await _userManager.GetLoginsAsync(user);
+        if (!linked.Any(l => l.LoginProvider == info.LoginProvider && l.ProviderKey == info.ProviderKey))
+        {
+            await _userManager.AddLoginAsync(user, info);
+        }
+
+        await _signInManager.SignInAsync(user, isPersistent: false);
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return Redirect(ResolveDashboardPath(roles));
+    }
+
     private static string SlugifyCompanyCode(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return "company";
@@ -217,15 +316,45 @@ public class AccountController : Controller
         if (user is not null)
         {
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var resetUrl = Url.Action("ResetPassword", "Account", new { token }, Request.Scheme)
-                + $"?email={Uri.EscapeDataString(model.Email)}";
+            var encodedToken = Uri.EscapeDataString(token);
+            var encodedEmail = Uri.EscapeDataString(model.Email);
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var resetUrl = $"{baseUrl}/reset-password?token={encodedToken}&email={encodedEmail}";
 
             try
             {
                 await _email.SendAsync(
                     model.Email,
                     "Reset your PMES password",
-                    $"""<p>Hi,</p><p>Click the link below to reset your password:</p><p><a href="{resetUrl}">{resetUrl}</a></p><p>If you did not request this, ignore this email.</p>"""
+                    $"""
+                    <!DOCTYPE html>
+                    <html>
+                    <body style="margin:0;padding:0;background:#f4f4f5;font-family:Inter,Arial,sans-serif;">
+                      <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
+                        <tr><td align="center">
+                          <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                            <tr><td style="background:#18181b;padding:32px 40px;text-align:center;">
+                              <span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">PMES</span>
+                            </td></tr>
+                            <tr><td style="padding:40px 40px 32px;">
+                              <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:#18181b;">Reset your password</p>
+                              <p style="margin:0 0 28px;font-size:14px;color:#71717a;line-height:1.6;">Hi, this is the PMES team. We received a request to reset the password for your account. Click the button below to set a new password.</p>
+                              <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+                                <tr><td style="background:#ea580c;border-radius:10px;">
+                                  <a href="{resetUrl}" style="display:inline-block;padding:14px 32px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">Reset Password</a>
+                                </td></tr>
+                              </table>
+                              <p style="margin:0 0 8px;font-size:13px;color:#a1a1aa;">This link expires in <strong>24 hours</strong>. If you did not request a password reset, you can safely ignore this email.</p>
+                            </td></tr>
+                            <tr><td style="background:#f4f4f5;padding:20px 40px;text-align:center;border-top:1px solid #e4e4e7;">
+                              <p style="margin:0;font-size:12px;color:#a1a1aa;">&copy; {DateTime.UtcNow.Year} PMES. All rights reserved.</p>
+                            </td></tr>
+                          </table>
+                        </td></tr>
+                      </table>
+                    </body>
+                    </html>
+                    """
                 );
                 status = "Password reset link has been sent to your email.";
             }
@@ -240,10 +369,13 @@ public class AccountController : Controller
         return RedirectToAction(nameof(ForgotPassword));
     }
 
-    [HttpGet("/reset-password/{token}")]
+    [HttpGet("/reset-password")]
     [AllowAnonymous]
-    public IActionResult ResetPassword(string token, [FromQuery] string? email)
+    public IActionResult ResetPassword([FromQuery] string token, [FromQuery] string? email)
     {
+        if (string.IsNullOrWhiteSpace(token))
+            return Redirect("/forgot-password");
+
         var vm = new ResetPasswordViewModel
         {
             Token = token,

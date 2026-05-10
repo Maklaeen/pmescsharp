@@ -2,6 +2,7 @@
 @{
     Layout = null;
 }
+@inject IConfiguration Configuration
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,6 +44,13 @@
                     </div>
                 }
 
+                @if (Context.Request.Query["error"] == "google_failed")
+                {
+                    <div class="mb-4 text-red-400 text-sm text-center bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-2">
+                        Google sign-in failed. Please try again or use email/password.
+                    </div>
+                }
+
                 @if (!ViewData.ModelState.IsValid)
                 {
                     var globalErrors = ViewData.ModelState[string.Empty]?.Errors;
@@ -57,6 +65,8 @@
                 <form method="post" action="/login" class="space-y-5">
                     @Html.AntiForgeryToken()
 
+                    <input type="hidden" id="RecaptchaToken" name="RecaptchaToken" value="" />
+
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email address</label>
                         <input id="email" name="Email" type="email" required autofocus value="@Model.Email"
@@ -67,9 +77,14 @@
 
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
-                        <input id="password" name="Password" type="password" required
-                               class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500 transition"
-                               placeholder="••••••••">
+                        <div class="relative">
+                            <input id="password" name="Password" type="password" required
+                                   class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500 transition"
+                                   placeholder="••••••••">
+                            <button type="button" onclick="togglePassword('password',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </button>
+                        </div>
                         <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Password)</span>
                     </div>
 
@@ -81,11 +96,23 @@
                         <a href="/forgot-password" class="text-sm text-orange-400 hover:text-orange-300 transition">Forgot password?</a>
                     </div>
 
-                    <button type="submit"
+                    <button type="submit" id="login-btn"
                             class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 rounded-lg transition text-sm">
                         Sign In
                     </button>
                 </form>
+
+                <div class="mt-5">
+                    <a href="/signin-google" class="w-full inline-flex items-center justify-center gap-3 border border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 text-gray-800 dark:text-gray-100 font-semibold py-2.5 rounded-lg transition text-sm">
+                        <svg class="w-5 h-5" viewBox="0 0 48 48" aria-hidden="true">
+                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.22 1.53 7.65 2.8l5.22-5.22C33.68 4.12 29.3 2 24 2 14.62 2 6.51 7.38 2.56 15.2l6.09 4.73C10.1 13.44 16.57 9.5 24 9.5z"/>
+                            <path fill="#4285F4" d="M46.5 24.5c0-1.64-.15-2.86-.47-4.13H24v7.83h12.7c-.26 2.05-1.68 5.14-4.84 7.2l-.04.26 7.01 5.43.49.05c4.49-4.15 7.18-10.27 7.18-17.64z"/>
+                            <path fill="#FBBC05" d="M8.65 28.1A14.7 14.7 0 0 1 7.9 24c0-1.43.25-2.8.7-4.1l-.02-.27-6.2-4.8-.2.1A23.98 23.98 0 0 0 0 24c0 3.87.92 7.54 2.56 10.8l6.09-4.7z"/>
+                            <path fill="#34A853" d="M24 46c6.3 0 11.6-2.07 15.47-5.63l-7.36-5.68c-1.97 1.37-4.62 2.33-8.11 2.33-7.4 0-13.86-3.94-16.12-9.4l-.25.02-6.34 4.9-.09.24C6.14 40.8 14.4 46 24 46z"/>
+                        </svg>
+                        Continue with Google
+                    </a>
+                </div>
             </div>
 
             <p class="text-center text-gray-500 text-sm mt-6">
@@ -97,3 +124,56 @@
 
 </body>
 </html>
+
+@{
+    var recaptchaSiteKey = Configuration["Recaptcha:SiteKey"] ?? "";
+}
+@if (!string.IsNullOrWhiteSpace(recaptchaSiteKey))
+{
+    <script src="https://www.google.com/recaptcha/api.js?render=@recaptchaSiteKey"></script>
+}
+<script>
+    function togglePassword(id, btn) {
+        var input = document.getElementById(id);
+        var isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        btn.innerHTML = isHidden
+            ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>'
+            : '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+    }
+
+    (function () {
+        var siteKey = '@recaptchaSiteKey';
+        var form = document.querySelector('form[action="/login"]');
+        var btn = document.getElementById('login-btn');
+
+        if (!siteKey || !form) return;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+
+            var execute = function () {
+                grecaptcha.execute(siteKey, { action: 'login' }).then(function (token) {
+                    document.getElementById('RecaptchaToken').value = token;
+                    form.submit();
+                }).catch(function () {
+                    btn.disabled = false;
+                    btn.textContent = 'Sign In';
+                });
+            };
+
+            if (window.grecaptcha && grecaptcha.ready) {
+                grecaptcha.ready(execute);
+            } else {
+                var interval = setInterval(function () {
+                    if (window.grecaptcha && grecaptcha.ready) {
+                        clearInterval(interval);
+                        grecaptcha.ready(execute);
+                    }
+                }, 50);
+            }
+        });
+    })();
+</script>

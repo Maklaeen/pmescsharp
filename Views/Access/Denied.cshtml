@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied – InkForge Solutions</title>
+    <title>Access Denied – PMES</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style> body { font-family: 'Inter', sans-serif; } </style>
@@ -20,23 +20,35 @@
             </svg>
             Back to Home
         </a>
-        <div class="flex items-center gap-2">
-            <div class="w-7 h-7 bg-orange-500 rounded-lg flex items-center justify-center font-bold text-xs">IF</div>
-            <span class="font-semibold text-white text-sm">InkForge Solutions</span>
+        <div class="flex items-center gap-3">
+            <img src="/images/LOGO.png" alt="PMES Logo" class="h-7 w-auto object-contain" />
         </div>
     </nav>
 
     <div class="flex-1 flex items-center justify-center px-4 py-12">
         <div class="w-full max-w-md text-center">
-            <div class="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="w-16 h-16 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <svg class="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                </svg>
             </div>
-            <h1 class="text-2xl font-bold text-white">Access denied</h1>
-            <p class="text-gray-400 text-sm mt-2">Your account doesn’t have permission to view this page.</p>
 
-            <div class="mt-6 flex items-center justify-center gap-3">
-                <a href="/dashboard" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-lg transition text-sm">Go to Dashboard</a>
-                <a href="/login" class="border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white font-medium px-5 py-2.5 rounded-lg transition text-sm">Login</a>
+            <div class="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 rounded-full px-3 py-1 mb-4">
+                <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">403 Forbidden</span>
+            </div>
+
+            <h1 class="text-2xl font-bold text-white">Access Denied</h1>
+            <p class="text-gray-400 text-sm mt-2 leading-relaxed">
+                You don't have permission to view this page.<br>Contact your administrator if you think this is a mistake.
+            </p>
+
+            <div class="mt-8 flex items-center justify-center gap-3">
+                <a href="javascript:history.back()" class="border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white font-medium px-5 py-2.5 rounded-lg transition text-sm">
+                    Go Back
+                </a>
+                <a href="/admin" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-lg transition text-sm">
+                    Go to Dashboard
+                </a>
             </div>
         </div>
     </div>

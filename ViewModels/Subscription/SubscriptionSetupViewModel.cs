@@ -10,4 +10,8 @@ public class SubscriptionSetupViewModel
 
     [EmailAddress]
     public string? BillingEmail { get; set; }
+
+    public string? StripePublishableKey { get; set; }
+
+    public string? PaymentIntentId { get; set; }
 }

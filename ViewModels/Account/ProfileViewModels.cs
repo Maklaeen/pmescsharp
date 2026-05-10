@@ -9,6 +9,14 @@ public class UpdateProfileViewModel
 
     [Required, EmailAddress]
     public string Email { get; set; } = "";
+
+    [DataType(DataType.Date)]
+    public DateTime? DateOfBirth { get; set; }
+
+    [StringLength(20)]
+    public string? MobileNumber { get; set; }
+
+    public string? Sex { get; set; }
 }
 
 public class ChangePasswordViewModel

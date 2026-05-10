@@ -26,17 +26,54 @@
                 <a href="/profile" class="bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 text-xs font-bold rounded-xl border border-white/[0.05] transition-all px-5 py-2.5">Back</a>
             </div>
 
+            @{
+                var vm = ViewBag.UpdateModel as PmesCSharp.ViewModels.Account.UpdateProfileViewModel;
+            }
             <form method="post" action="/profile/update" class="space-y-4 mt-6">
                 @Html.AntiForgeryToken()
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-1.5">Full Name</label>
-                    <input type="text" name="Name" value="@(Model.FullName ?? "")" required
+                    <input type="text" name="Name" value="@(vm?.Name ?? Model.FullName ?? "")" required
                            class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-1.5">Email Address</label>
-                    <input type="email" name="Email" value="@Model.Email" required
+                    <input type="email" name="Email" value="@(vm?.Email ?? Model.Email)" required
                            class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1.5">Date of Birth</label>
+                        <input type="date" name="DateOfBirth" value="@(vm?.DateOfBirth?.ToString("yyyy-MM-dd") ?? "")"
+                               class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1.5">Mobile Number</label>
+                        <input type="tel" name="MobileNumber" value="@(vm?.MobileNumber ?? "")"
+                               class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
+                               placeholder="+63 9XX XXX XXXX">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1.5">Sex</label>
+                        <select name="Sex" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                            <option value="">— Select —</option>
+                            @if (vm?.Sex == "Male")
+                            {
+                                <option value="Male" selected>Male</option>
+                                <option value="Female">Female</option>
+                            }
+                            else if (vm?.Sex == "Female")
+                            {
+                                <option value="Male">Male</option>
+                                <option value="Female" selected>Female</option>
+                            }
+                            else
+                            {
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            }
+                        </select>
+                    </div>
                 </div>
                 <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition">
                     Save Changes

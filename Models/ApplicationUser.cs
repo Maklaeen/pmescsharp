@@ -9,7 +9,6 @@ public class ApplicationUser : IdentityUser
     public bool IsArchived { get; set; } = false;
     public DateTime? ArchivedAt { get; set; }
 
-    // Admin approval workflow (used for invited employees)
     public bool IsApproved { get; set; } = true;
     public DateTime? ApprovedAt { get; set; }
 
@@ -18,4 +17,12 @@ public class ApplicationUser : IdentityUser
 
     public int? CompanyId { get; set; }
     public Company? Company { get; set; }
+
+    public DateTime? DateOfBirth { get; set; }
+
+    [StringLength(20)]
+    public string? MobileNumber { get; set; }
+
+    [StringLength(10)]
+    public string? Sex { get; set; } // Male | Female
 }

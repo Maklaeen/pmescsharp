@@ -19,7 +19,7 @@
         <h2 class="text-xl font-extrabold text-white tracking-tight">Send an invite</h2>
         <p class="text-sm text-gray-500 mt-1">Email-only invite. The invite includes a link and a code.</p>
 
-        <form method="post" action="/admin/users/invites" class="mt-8 space-y-4">
+        <form method="post" action="/users/invites" class="mt-8 space-y-4">
             @Html.AntiForgeryToken()
             <div>
                 <label class="block text-sm font-semibold text-gray-300 mb-1.5">Invitee Email</label>
@@ -55,7 +55,7 @@
                 <h2 class="text-xl font-extrabold text-white tracking-tight">Recent invites</h2>
                 <p class="text-sm text-gray-500 mt-1">Up to 200 latest invites</p>
             </div>
-            <a href="/admin/users/pending" class="px-5 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 text-xs font-bold rounded-xl border border-white/[0.05] transition-all">Pending approvals</a>
+            <a href="/users/pending" class="px-5 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 text-xs font-bold rounded-xl border border-white/[0.05] transition-all">Pending approvals</a>
         </div>
 
         <table class="w-full text-left border-separate border-spacing-y-3">
@@ -95,7 +95,7 @@
                         <td class="px-4 py-4 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
                             @if (i.IsActive)
                             {
-                                <form method="post" action="/admin/users/invites/@i.Id/revoke" class="inline">
+                                <form method="post" action="/users/invites/@i.Id/revoke" class="inline">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all" onclick="return confirm('Revoke this invite?');">Revoke</button>
                                 </form>

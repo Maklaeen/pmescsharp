@@ -24,4 +24,7 @@ public class RegisterViewModel
     [DataType(DataType.Password)]
     [Compare(nameof(Password))]
     public string ConfirmPassword { get; set; } = "";
+
+    // Google reCAPTCHA response token (v2/v3). When Recaptcha:SecretKey isn't configured, verification is skipped.
+    public string? RecaptchaToken { get; set; }
 }
