@@ -26,8 +26,6 @@ public sealed class RecaptchaService : IRecaptchaService
         var secret = _configuration["Recaptcha:SecretKey"];
         if (string.IsNullOrWhiteSpace(secret)) return true;
 
-        if (string.IsNullOrWhiteSpace(responseToken)) return false;
-
         try
         {
             var client = _httpClientFactory.CreateClient();
