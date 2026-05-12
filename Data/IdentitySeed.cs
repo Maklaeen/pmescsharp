@@ -42,7 +42,7 @@ public static class IdentitySeed
             {
                 UserName = email,
                 Email = email,
-                FullName = "InkForge Admin",
+                FullName = "Mark Glean Lubiano",
                 EmailConfirmed = true
             };
 

@@ -84,7 +84,7 @@ public class DashboardController : Controller
             Users = usersCount,
             Products = productsCount,
             Materials = materialsCount,
-            WorkOrdersDisplay = isSuperAdmin ? $"{workOrdersCount} (all companies)" : workOrdersCount.ToString(),
+            WorkOrdersDisplay = isSuperAdmin ? $"{workOrdersCount}" : workOrdersCount.ToString(),
             CompanyName = isSuperAdmin ? $"{companiesCount} companies" : (companyId <= 0 ? "" : company.Name),
             NeedsCompanyProfileSetup = !isSuperAdmin && companyId > 0 && profile is null,
             WorkOrdersInProgress = workOrdersInProgress,
