@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using PmesCSharp.Data;
 using PmesCSharp.Models;
 using PmesCSharp.Services;
-using PmesCSharp.ViewModels.Subscription;
-using Stripe;
 
 namespace PmesCSharp.Controllers;
 
@@ -18,133 +16,157 @@ public class SubscriptionController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAuditLogger _audit;
     private readonly IConfiguration _config;
+    private readonly PayMongoService _payMongo;
 
-    public SubscriptionController(AppDbContext db, ICurrentCompany currentCompany, UserManager<ApplicationUser> userManager, IAuditLogger audit, IConfiguration config)
+    public SubscriptionController(AppDbContext db, ICurrentCompany currentCompany, UserManager<ApplicationUser> userManager, IAuditLogger audit, IConfiguration config, PayMongoService payMongo)
     {
         _db = db;
         _currentCompany = currentCompany;
         _userManager = userManager;
         _audit = audit;
         _config = config;
+        _payMongo = payMongo;
     }
 
     [HttpGet("/subscription")]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
         if (companyId <= 0) return Forbid();
 
         var sub = await _db.Set<CompanySubscription>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.CompanyId == companyId, cancellationToken);
+            .FirstOrDefaultAsync(s => s.CompanyId == companyId, ct);
 
-        if (sub is null)
-            return Redirect("/subscription/setup");
-
+        if (sub is null) return Redirect("/subscription/setup");
         return View(sub);
     }
 
     [HttpGet("/subscription/setup")]
-    public async Task<IActionResult> Setup(CancellationToken cancellationToken)
+    public async Task<IActionResult> Setup(CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
         if (companyId <= 0) return Forbid();
 
-        var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, cancellationToken);
-        if (existing)
-            return Redirect("/subscription");
+        var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, ct);
+        if (existing) return Redirect("/subscription");
 
         var user = await _userManager.GetUserAsync(User);
-        var vm = new SubscriptionSetupViewModel
-        {
-            Plan = SubscriptionPlan.Standard,
-            BillingEmail = user?.Email,
-            StripePublishableKey = _config["Stripe:PublishableKey"],
-        };
-
-        return View(vm);
+        ViewBag.BillingEmail = user?.Email ?? "";
+        ViewBag.PublicKey = _config["PayMongo:PublicKey"] ?? "";
+        return View();
     }
 
-    [HttpPost("/subscription/setup/payment-intent")]
+    [HttpPost("/subscription/checkout")]
     [ValidateAntiForgeryToken]
-    public IActionResult CreatePaymentIntent([FromBody] CreatePaymentIntentRequest req)
-    {
-        var secretKey = _config["Stripe:SecretKey"];
-        if (string.IsNullOrWhiteSpace(secretKey))
-            return BadRequest(new { error = "Stripe not configured." });
-
-        StripeConfiguration.ApiKey = secretKey;
-
-        var amount = req.Plan == "Pro" ? 4999L : 2999L; // cents
-
-        var options = new PaymentIntentCreateOptions
-        {
-            Amount = amount,
-            Currency = "usd",
-            AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true },
-            Metadata = new Dictionary<string, string> { ["plan"] = req.Plan ?? "Standard" },
-        };
-
-        var service = new PaymentIntentService();
-        var intent = service.Create(options);
-
-        return Ok(new { clientSecret = intent.ClientSecret });
-    }
-
-    [HttpPost("/subscription/setup")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveSetup(SubscriptionSetupViewModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> Checkout([FromForm] string plan, [FromForm] string billingEmail, CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
         if (companyId <= 0) return Forbid();
 
-        model.StripePublishableKey = _config["Stripe:PublishableKey"];
+        var planEnum = plan == "Pro" ? SubscriptionPlan.Pro : SubscriptionPlan.Standard;
+        var amountCentavos = planEnum == SubscriptionPlan.Pro ? 4900_00L : 2900_00L; // PHP centavos
+        var description = $"PMES {planEnum} Plan - Monthly";
 
-        if (!ModelState.IsValid)
-            return View("Setup", model);
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var successUrl = $"{baseUrl}/subscription/success?plan={plan}&email={Uri.EscapeDataString(billingEmail)}";
+        var cancelUrl = $"{baseUrl}/subscription/setup";
 
-        var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, cancellationToken);
-        if (existing)
-            return Redirect("/subscription");
-
-        // Verify payment intent if Stripe is configured
-        var secretKey = _config["Stripe:SecretKey"];
-        if (!string.IsNullOrWhiteSpace(secretKey) && !string.IsNullOrWhiteSpace(model.PaymentIntentId))
+        try
         {
-            StripeConfiguration.ApiKey = secretKey;
-            var service = new PaymentIntentService();
-            var intent = service.Get(model.PaymentIntentId);
-            if (intent.Status != "succeeded")
-            {
-                ModelState.AddModelError(string.Empty, "Payment was not completed. Please try again.");
-                return View("Setup", model);
-            }
+            var link = await _payMongo.CreatePaymentLinkAsync(description, amountCentavos, successUrl, cancelUrl, ct);
+            // Store linkId in session for verification
+            HttpContext.Session.SetString("paymongo_link_id", link.LinkId);
+            HttpContext.Session.SetString("paymongo_plan", plan);
+            HttpContext.Session.SetString("paymongo_email", billingEmail);
+            return Redirect(link.CheckoutUrl);
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"Payment setup failed: {ex.Message}";
+            return Redirect("/subscription/setup");
+        }
+    }
+
+    [HttpGet("/subscription/success")]
+    public async Task<IActionResult> Success([FromQuery] string plan, [FromQuery] string email, CancellationToken ct)
+    {
+        var companyId = _currentCompany.CompanyId;
+        if (companyId <= 0) return Forbid();
+
+        var linkId = HttpContext.Session.GetString("paymongo_link_id");
+
+        // Verify payment if linkId exists
+        bool paid = true;
+        if (!string.IsNullOrWhiteSpace(linkId))
+        {
+            try { paid = await _payMongo.IsLinkPaidAsync(linkId, ct); }
+            catch { paid = true; } // fail open for demo
         }
 
+        if (!paid)
+        {
+            TempData["Error"] = "Payment not confirmed yet. Please try again.";
+            return Redirect("/subscription/setup");
+        }
+
+        var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, ct);
+        if (!existing)
+        {
+            var planEnum = plan == "Pro" ? SubscriptionPlan.Pro : SubscriptionPlan.Standard;
+            var now = DateTime.UtcNow;
+            var sub = new CompanySubscription
+            {
+                CompanyId = companyId,
+                Plan = planEnum,
+                Status = SubscriptionStatus.Active,
+                TrialEndsAt = now.AddDays(30),
+                CurrentPeriodEndsAt = now.AddMonths(1),
+                BillingEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            _db.Add(sub);
+            await _db.SaveChangesAsync(ct);
+            await _audit.LogAsync("subscription.activated", "CompanySubscription", sub.Id.ToString(), $"Plan={sub.Plan} via PayMongo", ct);
+        }
+
+        HttpContext.Session.Remove("paymongo_link_id");
+        HttpContext.Session.Remove("paymongo_plan");
+        HttpContext.Session.Remove("paymongo_email");
+
+        TempData["Success"] = $"🎉 You're now on the {plan} plan!";
+        return Redirect("/admin/dashboard");
+    }
+
+    [HttpPost("/subscription/trial")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StartTrial(CancellationToken ct)
+    {
+        var companyId = _currentCompany.CompanyId;
+        if (companyId <= 0) return Forbid();
+
+        var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, ct);
+        if (existing) return Redirect("/subscription");
+
+        var user = await _userManager.GetUserAsync(User);
         var now = DateTime.UtcNow;
         var sub = new CompanySubscription
         {
             CompanyId = companyId,
-            Plan = model.Plan,
-            Status = SubscriptionStatus.Active,
+            Plan = SubscriptionPlan.Standard,
+            Status = SubscriptionStatus.Trialing,
             TrialEndsAt = now.AddDays(30),
-            CurrentPeriodEndsAt = now.AddMonths(1),
-            BillingEmail = string.IsNullOrWhiteSpace(model.BillingEmail) ? null : model.BillingEmail.Trim(),
+            CurrentPeriodEndsAt = now.AddDays(30),
+            BillingEmail = user?.Email,
             CreatedAt = now,
             UpdatedAt = now,
         };
-
         _db.Add(sub);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync("subscription.trial", "CompanySubscription", sub.Id.ToString(), "Started 30-day trial", ct);
 
-        await _audit.LogAsync("subscription.setup", "CompanySubscription", sub.Id.ToString(), $"Plan={sub.Plan}; status={sub.Status}", cancellationToken);
-
-        TempData["Success"] = $"You're now on the {sub.Plan} plan!";
-        return Redirect("/admin");
+        TempData["Success"] = "30-day free trial started!";
+        return Redirect("/admin/dashboard");
     }
-}
-
-public class CreatePaymentIntentRequest
-{
-    public string? Plan { get; set; }
 }

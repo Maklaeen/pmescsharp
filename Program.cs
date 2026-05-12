@@ -28,6 +28,14 @@ builder.Services.AddScoped<PmesCSharp.Services.EmailService>();
 builder.Services.AddScoped<PmesCSharp.Services.IEmailSender, PmesCSharp.Services.SmtpEmailSender>();
 builder.Services.AddScoped<PmesCSharp.Services.IAuditLogger, PmesCSharp.Services.AuditLogger>();
 builder.Services.AddScoped<PmesCSharp.Services.IRecaptchaService, PmesCSharp.Services.RecaptchaService>();
+builder.Services.AddHttpClient<PmesCSharp.Services.PayMongoService>();
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<PmesCSharp.Data.ICurrentCompany, PmesCSharp.Data.CurrentCompany>();
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, PmesCSharp.Data.CompanyUserClaimsPrincipalFactory>();
@@ -103,6 +111,7 @@ else
 app.UseStatusCodePagesWithReExecute("/error/{0}");
 
 app.UseStaticFiles();
+app.UseSession();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
