@@ -35,6 +35,15 @@ public static class IdentitySeed
             return;
         }
 
+        // Remove legacy superadmin if exists
+        var legacy = await userManager.FindByEmailAsync("admin@pmes.com");
+        if (legacy is not null)
+        {
+            var legacyRoles = await userManager.GetRolesAsync(legacy);
+            await userManager.RemoveFromRolesAsync(legacy, legacyRoles);
+            await userManager.DeleteAsync(legacy);
+        }
+
         var existing = await userManager.FindByEmailAsync(email);
         if (existing is null)
         {
