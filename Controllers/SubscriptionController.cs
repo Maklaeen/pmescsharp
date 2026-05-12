@@ -69,13 +69,13 @@ public class SubscriptionController : Controller
         var description = $"PMES {planEnum} Plan - Monthly";
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
-        var successUrl = $"{baseUrl}/subscription/success?plan={plan}&email={Uri.EscapeDataString(billingEmail)}";
         var cancelUrl = $"{baseUrl}/subscription/setup";
+        var successUrl = $"{baseUrl}/subscription/waiting?plan={plan}&email={Uri.EscapeDataString(billingEmail)}";
 
         try
         {
             var link = await _payMongo.CreatePaymentLinkAsync(description, amountCentavos, successUrl, cancelUrl, ct);
-            // Store linkId in session for verification
+
             HttpContext.Session.SetString("paymongo_link_id", link.LinkId);
             HttpContext.Session.SetString("paymongo_plan", plan);
             HttpContext.Session.SetString("paymongo_email", billingEmail);
@@ -85,6 +85,30 @@ public class SubscriptionController : Controller
         {
             TempData["Error"] = $"Payment setup failed: {ex.Message}";
             return Redirect("/subscription/setup");
+        }
+    }
+
+    [HttpGet("/subscription/waiting")]
+    public IActionResult Waiting([FromQuery] string plan, [FromQuery] string email)
+    {
+        var linkId = HttpContext.Session.GetString("paymongo_link_id") ?? "";
+        ViewBag.LinkId = linkId;
+        ViewBag.Plan = plan;
+        ViewBag.Email = email;
+        return View();
+    }
+
+    [HttpGet("/subscription/check-payment")]
+    public async Task<IActionResult> CheckPayment([FromQuery] string linkId, CancellationToken ct)
+    {
+        try
+        {
+            var paid = await _payMongo.IsLinkPaidAsync(linkId, ct);
+            return Ok(new { paid });
+        }
+        catch
+        {
+            return Ok(new { paid = false });
         }
     }
 
