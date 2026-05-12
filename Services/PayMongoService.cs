@@ -15,15 +15,15 @@ public class PayMongoService
         _config = config;
     }
 
-    public async Task<PayMongoLinkResult> CreatePaymentLinkAsync(string description, long amountCentavos, string successUrl, string cancelUrl, CancellationToken ct = default)
+    private AuthenticationHeaderValue GetAuth()
     {
         var secretKey = _config["PayMongo:SecretKey"] ?? "";
         var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(secretKey + ":"));
+        return new AuthenticationHeaderValue("Basic", credentials);
+    }
 
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-        _http.DefaultRequestHeaders.Accept.Clear();
-        _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
+    public async Task<PayMongoLinkResult> CreatePaymentLinkAsync(string description, long amountCentavos, string successUrl, string cancelUrl, CancellationToken ct = default)
+    {
         var payload = new
         {
             data = new
@@ -39,9 +39,14 @@ public class PayMongoService
         };
 
         var json = JsonSerializer.Serialize(payload);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.paymongo.com/v1/links")
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = GetAuth();
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        var response = await _http.PostAsync("https://api.paymongo.com/v1/links", content, ct);
+        var response = await _http.SendAsync(request, ct);
         var body = await response.Content.ReadAsStringAsync(ct);
 
         if (!response.IsSuccessStatusCode)
@@ -61,12 +66,10 @@ public class PayMongoService
 
     public async Task<bool> IsLinkPaidAsync(string linkId, CancellationToken ct = default)
     {
-        var secretKey = _config["PayMongo:SecretKey"] ?? "";
-        var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(secretKey + ":"));
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.paymongo.com/v1/links/{linkId}");
+        request.Headers.Authorization = GetAuth();
 
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-
-        var response = await _http.GetAsync($"https://api.paymongo.com/v1/links/{linkId}", ct);
+        var response = await _http.SendAsync(request, ct);
         var body = await response.Content.ReadAsStringAsync(ct);
 
         if (!response.IsSuccessStatusCode) return false;
