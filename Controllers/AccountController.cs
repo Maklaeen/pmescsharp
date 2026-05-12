@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using PmesCSharp.Data;
 using PmesCSharp.Models;
 using PmesCSharp.ViewModels.Account;
-using System.Security.Claims;
 using PmesCSharp.Services;
+using System.Security.Claims;
 
 namespace PmesCSharp.Controllers;
 
@@ -14,25 +14,22 @@ public class AccountController : Controller
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IConfiguration _configuration;
-    private readonly IRecaptchaService _recaptchaService;
     private readonly AppDbContext _db;
-    private readonly PmesCSharp.Services.EmailService _email;
+    private readonly EmailService _email;
+    private readonly IRecaptchaService _recaptcha;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
-        IConfiguration configuration,
-        IRecaptchaService recaptchaService,
         AppDbContext db,
-        PmesCSharp.Services.EmailService email)
+        EmailService email,
+        IRecaptchaService recaptcha)
     {
         _signInManager = signInManager;
         _userManager = userManager;
-        _configuration = configuration;
-        _recaptchaService = recaptchaService;
         _db = db;
         _email = email;
+        _recaptcha = recaptcha;
     }
 
     [HttpGet("/login")]
@@ -46,11 +43,10 @@ public class AccountController : Controller
     {
         if (!ModelState.IsValid) return View(model);
 
-        var recaptchaToken = Request.Form["cf-turnstile-response"].ToString();
-        var recaptchaValid = await _recaptchaService.VerifyAsync(recaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
-        if (!recaptchaValid)
+        var captchaToken = Request.Form["g-recaptcha-response"].ToString();
+        if (!await _recaptcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken))
         {
-            ModelState.AddModelError(string.Empty, "Verification failed. Please try again.");
+            ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
             return View(model);
         }
 
@@ -75,7 +71,6 @@ public class AccountController : Controller
         }
 
         await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
-
         var roles = await _userManager.GetRolesAsync(user);
         return Redirect(ResolveDashboardPath(roles));
     }
@@ -91,11 +86,10 @@ public class AccountController : Controller
     {
         if (!ModelState.IsValid) return View(model);
 
-        var recaptchaToken = Request.Form["cf-turnstile-response"].ToString();
-        var recaptchaValid = await _recaptchaService.VerifyAsync(recaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
-        if (!recaptchaValid)
+        var captchaToken = Request.Form["g-recaptcha-response"].ToString();
+        if (!await _recaptcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken))
         {
-            ModelState.AddModelError(string.Empty, "Verification failed. Please try again.");
+            ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
             return View(model);
         }
 
@@ -106,19 +100,13 @@ public class AccountController : Controller
             return View(model);
         }
 
-      // Create company + admin user in one transaction
         await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             var codeBase = SlugifyCompanyCode(model.CompanyName);
             var code = await EnsureUniqueCompanyCodeAsync(codeBase, cancellationToken);
 
-            var company = new Company
-            {
-                Name = model.CompanyName.Trim(),
-                Code = code,
-            };
-
+            var company = new Company { Name = model.CompanyName.Trim(), Code = code };
             _db.Companies.Add(company);
             await _db.SaveChangesAsync(cancellationToken);
 
@@ -129,7 +117,7 @@ public class AccountController : Controller
                 FullName = model.Name,
                 EmailConfirmed = false,
                 CompanyId = company.Id,
-              IsApproved = true,
+                IsApproved = true,
                 ApprovedAt = DateTime.UtcNow,
             };
 
@@ -150,7 +138,6 @@ public class AccountController : Controller
             }
 
             await tx.CommitAsync(cancellationToken);
-
             await _signInManager.SignInAsync(user, isPersistent: false);
 
             try
@@ -158,17 +145,13 @@ public class AccountController : Controller
                 var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                 var encoded = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token));
                 var confirmUrl = Url.Action("ConfirmEmail", "Profile", new { userId = user.Id, token = encoded }, Request.Scheme);
-
                 await _email.SendAsync(
                     user.Email!,
                     "Verify your PMES email",
-                    $"""<p>Hi {System.Net.WebUtility.HtmlEncode(user.FullName ?? user.Email)},</p><p>Please verify your email by clicking the link below:</p><p><a href=\"{confirmUrl}\">Verify Email</a></p><p>If you did not create this account, you can ignore this email.</p>"""
+                    $"""<p>Hi {System.Net.WebUtility.HtmlEncode(user.FullName ?? user.Email)},</p><p>Please verify your email by clicking the link below:</p><p><a href="{confirmUrl}">Verify Email</a></p><p>If you did not create this account, you can ignore this email.</p>"""
                 );
             }
-            catch
-            {
-                // Don't block registration if email sending fails.
-            }
+            catch { }
 
             return Redirect("/subscription/setup");
         }
@@ -180,34 +163,36 @@ public class AccountController : Controller
         }
     }
 
-    private static string SlugifyCompanyCode(string name)
+    [HttpGet("/signin-google")]
+    [AllowAnonymous]
+    public IActionResult SignInWithGoogle()
     {
-        if (string.IsNullOrWhiteSpace(name)) return "company";
-        var sb = new System.Text.StringBuilder();
-        foreach (var ch in name.Trim().ToLowerInvariant())
-        {
-            if (char.IsLetterOrDigit(ch)) sb.Append(ch);
-            else if (ch is ' ' or '-' or '_') sb.Append('-');
-        }
-
-        var code = sb.ToString();
-        while (code.Contains("--", StringComparison.Ordinal))
-            code = code.Replace("--", "-", StringComparison.Ordinal);
-
-        code = code.Trim('-');
-        return string.IsNullOrWhiteSpace(code) ? "company" : code;
+        var callbackUrl = Url.Action(nameof(GoogleCallback), "Account", null, Request.Scheme)!;
+        var props = _signInManager.ConfigureExternalAuthenticationProperties("Google", callbackUrl);
+        return Challenge(props, "Google");
     }
 
-    private async Task<string> EnsureUniqueCompanyCodeAsync(string codeBase, CancellationToken cancellationToken)
+    [HttpGet("/signin-google/callback")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GoogleCallback()
     {
-        var code = codeBase;
-        var n = 1;
-        while (await _db.Companies.AnyAsync(c => c.Code == code, cancellationToken))
-        {
-            n++;
-            code = $"{codeBase}-{n}";
-        }
-        return code;
+        var info = await _signInManager.GetExternalLoginInfoAsync();
+        if (info is null) { TempData["Error"] = "Google sign-in failed."; return Redirect("/login"); }
+
+        var email = info.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.Email);
+        if (string.IsNullOrWhiteSpace(email)) { TempData["Error"] = "Google sign-in failed (missing email)."; return Redirect("/login"); }
+
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null) { TempData["Error"] = "No PMES account found for this Google email. Please register first."; return Redirect("/login"); }
+        if (!user.IsApproved) { TempData["Error"] = "Your account is pending admin approval."; return Redirect("/login"); }
+
+        var logins = await _userManager.GetLoginsAsync(user);
+        if (!logins.Any(l => l.LoginProvider == info.LoginProvider && l.ProviderKey == info.ProviderKey))
+            await _userManager.AddLoginAsync(user, info);
+
+        await _signInManager.SignInAsync(user, isPersistent: false);
+        var roles = await _userManager.GetRolesAsync(user);
+        return Redirect(ResolveDashboardPath(roles));
     }
 
     [HttpGet("/forgot-password")]
@@ -219,13 +204,9 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
+        if (!ModelState.IsValid) return View(model);
 
         var user = await _userManager.FindByEmailAsync(model.Email);
-        // Always show a success-like status (avoid account enumeration)
         var status = "If your email exists in our system, you will receive a password reset link.";
 
         if (user is not null)
@@ -233,8 +214,7 @@ public class AccountController : Controller
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var encodedToken = Uri.EscapeDataString(token);
             var encodedEmail = Uri.EscapeDataString(model.Email);
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            var resetUrl = $"{baseUrl}/reset-password?token={encodedToken}&email={encodedEmail}";
+            var resetUrl = $"{Request.Scheme}://{Request.Host}/reset-password?token={encodedToken}&email={encodedEmail}";
 
             try
             {
@@ -253,13 +233,13 @@ public class AccountController : Controller
                             </td></tr>
                             <tr><td style="padding:40px 40px 32px;">
                               <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:#18181b;">Reset your password</p>
-                              <p style="margin:0 0 28px;font-size:14px;color:#71717a;line-height:1.6;">Hi, this is the PMES team. We received a request to reset the password for your account. Click the button below to set a new password.</p>
+                              <p style="margin:0 0 28px;font-size:14px;color:#71717a;line-height:1.6;">Click the button below to set a new password.</p>
                               <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
                                 <tr><td style="background:#ea580c;border-radius:10px;">
-                                  <a href="{resetUrl}" style="display:inline-block;padding:14px 32px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">Reset Password</a>
+                                  <a href="{resetUrl}" style="display:inline-block;padding:14px 32px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">Reset Password</a>
                                 </td></tr>
                               </table>
-                              <p style="margin:0 0 8px;font-size:13px;color:#a1a1aa;">This link expires in <strong>24 hours</strong>. If you did not request a password reset, you can safely ignore this email.</p>
+                              <p style="margin:0;font-size:13px;color:#a1a1aa;">This link expires in <strong>24 hours</strong>.</p>
                             </td></tr>
                             <tr><td style="background:#f4f4f5;padding:20px 40px;text-align:center;border-top:1px solid #e4e4e7;">
                               <p style="margin:0;font-size:12px;color:#a1a1aa;">&copy; {DateTime.UtcNow.Year} PMES. All rights reserved.</p>
@@ -275,7 +255,6 @@ public class AccountController : Controller
             }
             catch
             {
-                // fallback for dev
                 status = $"Reset link (dev): {resetUrl}";
             }
         }
@@ -288,15 +267,8 @@ public class AccountController : Controller
     [AllowAnonymous]
     public IActionResult ResetPassword([FromQuery] string token, [FromQuery] string? email)
     {
-        if (string.IsNullOrWhiteSpace(token))
-            return Redirect("/forgot-password");
-
-        var vm = new ResetPasswordViewModel
-        {
-            Token = token,
-            Email = email ?? string.Empty
-        };
-        return View(vm);
+        if (string.IsNullOrWhiteSpace(token)) return Redirect("/forgot-password");
+        return View(new ResetPasswordViewModel { Token = token, Email = email ?? string.Empty });
     }
 
     [HttpPost("/reset-password")]
@@ -304,26 +276,16 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
+        if (!ModelState.IsValid) return View(model);
 
         var user = await _userManager.FindByEmailAsync(model.Email);
-        if (user is null)
-        {
-            TempData["Status"] = "Your password has been reset.";
-            return Redirect("/login");
-        }
+        if (user is null) { TempData["Status"] = "Your password has been reset."; return Redirect("/login"); }
 
         var result = await _userManager.ResetPasswordAsync(user, model.Token, model.Password);
         if (!result.Succeeded)
         {
             foreach (var error in result.Errors)
-            {
                 ModelState.AddModelError(string.Empty, error.Description);
-            }
-
             return View(model);
         }
 
@@ -338,6 +300,31 @@ public class AccountController : Controller
     {
         await _signInManager.SignOutAsync();
         return RedirectToAction("Index", "Home");
+    }
+
+    private static string SlugifyCompanyCode(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "company";
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in name.Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch)) sb.Append(ch);
+            else if (ch is ' ' or '-' or '_') sb.Append('-');
+        }
+        var code = sb.ToString();
+        while (code.Contains("--", StringComparison.Ordinal))
+            code = code.Replace("--", "-", StringComparison.Ordinal);
+        code = code.Trim('-');
+        return string.IsNullOrWhiteSpace(code) ? "company" : code;
+    }
+
+    private async Task<string> EnsureUniqueCompanyCodeAsync(string codeBase, CancellationToken cancellationToken)
+    {
+        var code = codeBase;
+        var n = 1;
+        while (await _db.Companies.AnyAsync(c => c.Code == code, cancellationToken))
+            code = $"{codeBase}-{++n}";
+        return code;
     }
 
     private static string ResolveDashboardPath(IList<string> roles)

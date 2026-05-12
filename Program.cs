@@ -12,9 +12,6 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddHttpClient();
 
-// Register RecaptchaService
-builder.Services.AddScoped<PmesCSharp.Services.IRecaptchaService, PmesCSharp.Services.RecaptchaService>();
-
 var configuredKeysPath = builder.Configuration["DataProtection:KeysPath"];
 var keysPath = string.IsNullOrWhiteSpace(configuredKeysPath)
     ? Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")
@@ -30,6 +27,7 @@ builder.Services
 builder.Services.AddScoped<PmesCSharp.Services.EmailService>();
 builder.Services.AddScoped<PmesCSharp.Services.IEmailSender, PmesCSharp.Services.SmtpEmailSender>();
 builder.Services.AddScoped<PmesCSharp.Services.IAuditLogger, PmesCSharp.Services.AuditLogger>();
+builder.Services.AddScoped<PmesCSharp.Services.IRecaptchaService, PmesCSharp.Services.RecaptchaService>();
 builder.Services.AddHttpClient<PmesCSharp.Services.PayMongoService>();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -55,19 +53,39 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
+var google = builder.Configuration.GetSection("Authentication:Google");
+builder.Services.AddAuthentication()
+    .AddGoogle(options =>
+    {
+        options.ClientId = google["ClientId"]!;
+        options.ClientSecret = google["ClientSecret"]!;
+        options.CallbackPath = "/signin-google/callback";
+        options.SignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
+        options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
+        options.CorrelationCookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+        options.CorrelationCookie.HttpOnly = true;
+        options.CorrelationCookie.IsEssential = true;
+        options.Events.OnRemoteFailure = ctx =>
+        {
+            var error = ctx.Failure?.Message ?? "unknown";
+            ctx.Response.Redirect("/login?error=" + Uri.EscapeDataString(error));
+            ctx.HandleResponse();
+            return Task.CompletedTask;
+        };
+    });
 
+builder.Services.ConfigureExternalCookie(options =>
+{
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
+    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+    options.Cookie.IsEssential = true;
+});
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/login";
     options.AccessDeniedPath = "/access/denied";
-});
-
-builder.Services.ConfigureExternalCookie(options =>
-{
-    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
-    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest;
-    options.Cookie.IsEssential = true;
+    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
 });
 
 var app = builder.Build();

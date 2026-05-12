@@ -22,7 +22,7 @@ public sealed class RecaptchaService : IRecaptchaService
 
     public async Task<bool> VerifyAsync(string? responseToken, string? remoteIp, CancellationToken cancellationToken)
     {
-        var secret = _configuration["Recaptcha:SecretKey"];
+        var secret = _configuration["ReCaptchaSettings:SecretKey"];
         if (string.IsNullOrWhiteSpace(secret)) return true;
         if (string.IsNullOrWhiteSpace(responseToken)) return false;
 
@@ -36,7 +36,7 @@ public sealed class RecaptchaService : IRecaptchaService
                 ["remoteip"] = remoteIp ?? string.Empty,
             });
 
-            using var resp = await client.PostAsync("https://challenges.cloudflare.com/turnstile/v0/siteverify", content, cancellationToken);
+            using var resp = await client.PostAsync("https://www.google.com/recaptcha/api/siteverify", content, cancellationToken);
             var json = await resp.Content.ReadAsStringAsync(cancellationToken);
 
             using var doc = JsonDocument.Parse(json);
@@ -44,7 +44,7 @@ public sealed class RecaptchaService : IRecaptchaService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Turnstile verification failed.");
+            _logger.LogWarning(ex, "reCAPTCHA verification failed.");
             return true;
         }
     }
