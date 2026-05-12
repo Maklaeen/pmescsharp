@@ -3,20 +3,39 @@
     ViewData["Title"] = "Inventory Dashboard";
 }
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <h2 class="text-2xl font-bold text-white tracking-tight">MRP &amp; Shortages</h2>
-        <p class="text-sm text-gray-500 mt-1">Check required vs available materials per schedule.</p>
-        <div class="mt-6">
-            <a href="/production/schedules" class="inline-flex px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Open Production Schedules</a>
-        </div>
+<div class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        @foreach (var card in new[]
+        {
+            new { Title = "Material Movements", Desc = "Record stock-in, stock-out, and adjustments with full traceability.", Href = "/inventory/material-movements", Icon = "M3 7h18M3 12h18M3 17h18", Color = "text-orange-400", Bg = "bg-orange-500/10", Border = "border-orange-500/20" },
+            new { Title = "Production Schedules", Desc = "Check MRP — required vs available materials per schedule.", Href = "/production/schedules", Icon = "M4 6h16M4 12h16m-7 6h7", Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20" },
+        })
+        {
+            <a href="@card.Href"
+               class="group bg-[#111114] border border-white/[0.05] rounded-[24px] p-7 hover:border-orange-500/20 hover:bg-[#16161a] transition-all duration-300 block">
+                <div class="w-12 h-12 @card.Bg border @card.Border rounded-2xl flex items-center justify-center @card.Color mb-5 group-hover:scale-110 transition-transform duration-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="@card.Icon"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-white text-lg mb-1">@card.Title</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">@card.Desc</p>
+                <div class="mt-5 flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    Open <svg class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                </div>
+            </a>
+        }
     </div>
 
     <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <h2 class="text-2xl font-bold text-white tracking-tight">Stock Movements</h2>
-        <p class="text-sm text-gray-500 mt-1">Record stock-in/stock-out and adjustments.</p>
-        <div class="mt-6">
-            <a href="/inventory/material-movements" class="inline-flex px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Material Movements</a>
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-1 h-6 bg-orange-500 rounded-full"></div>
+            <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">Quick Tips</h2>
         </div>
+        <ul class="space-y-3 text-sm text-gray-400">
+            <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Use Material Movements to record stock-in when new materials arrive.</li>
+            <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Check MRP on each schedule to detect material shortages before production starts.</li>
+            <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Stock is auto-deducted when operators record material usage on work orders.</li>
+        </ul>
     </div>
 </div>

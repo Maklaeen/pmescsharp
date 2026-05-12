@@ -3,22 +3,54 @@
     ViewData["Title"] = "Planner Dashboard";
 }
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <h2 class="text-2xl font-bold text-white tracking-tight">Production Planning</h2>
-        <p class="text-sm text-gray-500 mt-1">Create schedules, generate work orders, and monitor progress.</p>
-        <div class="mt-6 space-y-3">
-            <a href="/progress" class="block px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Progress Dashboard</a>
-            <a href="/production/schedules" class="block px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Production Schedules</a>
-            <a href="/production/work-orders" class="block px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Work Orders</a>
-        </div>
+<div class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        @foreach (var card in new[]
+        {
+            new { Title = "Production Schedules", Desc = "Create and manage production batches.", Href = "/production/schedules", Icon = "M4 6h16M4 12h16m-7 6h7", Color = "text-orange-400", Bg = "bg-orange-500/10", Border = "border-orange-500/20", Primary = true },
+            new { Title = "Progress Dashboard", Desc = "Monitor in-progress schedules and work order completion.", Href = "/production/dashboard", Icon = "M3 3v18h18M7 14l3-3 3 3 6-6", Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20", Primary = false },
+            new { Title = "Work Orders", Desc = "Assign operators and track process steps.", Href = "/production/work-orders", Icon = "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", Color = "text-emerald-400", Bg = "bg-emerald-500/10", Border = "border-emerald-500/20", Primary = false },
+        })
+        {
+            <a href="@card.Href"
+               class="group bg-[#111114] border border-white/[0.05] rounded-[24px] p-7 hover:border-orange-500/20 hover:bg-[#16161a] transition-all duration-300 block">
+                <div class="w-12 h-12 @card.Bg border @card.Border rounded-2xl flex items-center justify-center @card.Color mb-5 group-hover:scale-110 transition-transform duration-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="@card.Icon"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-white text-lg mb-1">@card.Title</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">@card.Desc</p>
+                <div class="mt-5 flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    Open <svg class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                </div>
+            </a>
+        }
     </div>
 
-    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <h2 class="text-2xl font-bold text-white tracking-tight">Costing</h2>
-        <p class="text-sm text-gray-500 mt-1">Compute material costs from BOM and add labor.</p>
-        <div class="mt-6">
-            <a href="/production/schedules" class="inline-flex px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Open Schedules (for costing)</a>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-1 h-6 bg-orange-500 rounded-full"></div>
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">Costing</h2>
+            </div>
+            <p class="text-gray-400 text-sm mb-6">Compute material costs from BOM and add optional labor cost per schedule.</p>
+            <a href="/costing" class="inline-flex items-center gap-2 px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">
+                Open Costing
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+            </a>
+        </div>
+
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-1 h-6 bg-orange-500 rounded-full"></div>
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">Quick Tips</h2>
+            </div>
+            <ul class="space-y-3 text-sm text-gray-400">
+                <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Create a schedule first, then generate work orders.</li>
+                <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> MRP is auto-computed from BOM × planned quantity.</li>
+                <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Costing is available after schedule is started.</li>
+            </ul>
         </div>
     </div>
 </div>

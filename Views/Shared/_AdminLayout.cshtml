@@ -56,7 +56,7 @@
     var displayTitle = isDashboard ? greeting : pageTitle;
 }
 <!DOCTYPE html>
-<html lang="en" class="@(userTheme == "light" ? "theme-light" : "")">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -308,12 +308,15 @@
     </style>
 
     <script>
-        // Sync localStorage with server-side theme so it's consistent
+        // Apply theme IMMEDIATELY before render to prevent flash
         (function () {
             try {
-                localStorage.setItem('theme', '@userTheme');
-                // Also sync pmes-theme key used by public pages
-                localStorage.setItem('pmes-theme', '@userTheme' === 'light' ? 'light' : 'dark');
+                var t = localStorage.getItem('pmes-theme') || 'dark';
+                var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (!dark) document.documentElement.classList.add('theme-light');
+                // Sync both keys
+                localStorage.setItem('theme', dark ? 'dark' : 'light');
+                localStorage.setItem('pmes-theme', t);
             } catch (e) { }
         })();
     </script>
