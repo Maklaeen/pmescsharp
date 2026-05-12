@@ -19,7 +19,8 @@ public class AuditLogsController : Controller
     public async Task<IActionResult> Index([FromQuery] int page = 1)
     {
         const int pageSize = 30;
-        var query = _audit.Query();
+        var isSuperAdmin = User.IsInRole("superadmin");
+        var query = isSuperAdmin ? _audit.QueryAll() : _audit.Query();
 
         var items = await query
             .Skip((page - 1) * pageSize)

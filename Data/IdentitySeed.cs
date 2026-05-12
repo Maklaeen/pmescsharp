@@ -25,7 +25,7 @@ public static class IdentitySeed
             {
                 await roleManager.CreateAsync(new IdentityRole(role));
             }
-        }
+        }   x
 
         var email = configuration["Seed:SuperAdminEmail"];
         var password = configuration["Seed:SuperAdminPassword"];

@@ -25,6 +25,7 @@ public sealed class AuditLogger : IAuditLogger
     }
 
     public IQueryable<AuditLog> Query() => _db.AuditLogs.AsNoTracking().OrderByDescending(a => a.Id);
+    public IQueryable<AuditLog> QueryAll() => _db.AuditLogs.IgnoreQueryFilters().AsNoTracking().OrderByDescending(a => a.Id);
 
     public async Task LogAsync(
         string action,

@@ -31,7 +31,10 @@ public class UsersController : Controller
     {
         const int pageSize = 10;
         var companyId = _currentCompany.CompanyId;
-        var query = _userManager.Users.Where(u => u.IsArchived == archived && u.CompanyId == companyId);
+        var isSuperAdmin = User.IsInRole("superadmin");
+        var query = isSuperAdmin
+            ? _userManager.Users.Where(u => u.IsArchived == archived)
+            : _userManager.Users.Where(u => u.IsArchived == archived && u.CompanyId == companyId);
         var users = await query
             .OrderByDescending(u => u.Id)
             .Skip((page - 1) * pageSize)
@@ -58,10 +61,12 @@ public class UsersController : Controller
     public async Task<IActionResult> Pending(CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
-        if (!User.IsInRole("superadmin") && companyId <= 0) return Forbid();
+        var isSuperAdmin = User.IsInRole("superadmin");
+        if (!isSuperAdmin && companyId <= 0) return Forbid();
 
-        var query = _userManager.Users
-            .Where(u => !u.IsApproved && u.CompanyId == companyId)
+        var query = isSuperAdmin
+            ? _userManager.Users.Where(u => !u.IsApproved)
+            : _userManager.Users.Where(u => !u.IsApproved && u.CompanyId == companyId)
           .OrderByDescending(u => u.Id);
 
         var items = await query
@@ -84,11 +89,12 @@ public class UsersController : Controller
     public async Task<IActionResult> Approve(string id, CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
-        if (companyId <= 0) return Forbid();
+        var isSuperAdmin = User.IsInRole("superadmin");
+        if (!isSuperAdmin && companyId <= 0) return Forbid();
 
         var user = await _userManager.FindByIdAsync(id);
         if (user is null) return NotFound();
-        if (user.CompanyId != companyId) return NotFound();
+        if (!isSuperAdmin && user.CompanyId != companyId) return NotFound();
         if (user.IsApproved)
         {
             TempData["Success"] = "User already approved.";
@@ -119,11 +125,12 @@ public class UsersController : Controller
     public async Task<IActionResult> Reject(string id, CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
-        if (companyId <= 0) return Forbid();
+        var isSuperAdmin = User.IsInRole("superadmin");
+        if (!isSuperAdmin && companyId <= 0) return Forbid();
 
         var user = await _userManager.FindByIdAsync(id);
         if (user is null) return NotFound();
-        if (user.CompanyId != companyId) return NotFound();
+        if (!isSuperAdmin && user.CompanyId != companyId) return NotFound();
 
         // Reject = archive account and clear company assignment
         user.IsApproved = false;
@@ -196,8 +203,8 @@ public class UsersController : Controller
         var user = await _userManager.FindByIdAsync(id);
         if (user is null) return NotFound();
 
-        // Prevent cross-company edits
-        if (user.CompanyId != _currentCompany.CompanyId)
+        var isSuperAdmin = User.IsInRole("superadmin");
+        if (!isSuperAdmin && user.CompanyId != _currentCompany.CompanyId)
             return NotFound();
 
         var roles = await _userManager.GetRolesAsync(user);
@@ -234,8 +241,8 @@ public class UsersController : Controller
         var user = await _userManager.FindByIdAsync(id);
         if (user is null) return NotFound();
 
-        // Prevent cross-company edits
-        if (user.CompanyId != _currentCompany.CompanyId)
+        var isSuperAdmin = User.IsInRole("superadmin");
+        if (!isSuperAdmin && user.CompanyId != _currentCompany.CompanyId)
             return NotFound();
 
         // Prevent admin from editing superadmin
@@ -276,8 +283,9 @@ public class UsersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Destroy(string id)
     {
+        var isSuperAdmin = User.IsInRole("superadmin");
         var user = await _userManager.FindByIdAsync(id);
-       if (user is not null && user.CompanyId != _currentCompany.CompanyId)
+        if (user is not null && !isSuperAdmin && user.CompanyId != _currentCompany.CompanyId)
             return NotFound();
         if (user is not null)
         {
@@ -302,8 +310,9 @@ public class UsersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Restore(string id)
     {
+        var isSuperAdmin = User.IsInRole("superadmin");
         var user = await _userManager.FindByIdAsync(id);
-       if (user is not null && user.CompanyId != _currentCompany.CompanyId)
+        if (user is not null && !isSuperAdmin && user.CompanyId != _currentCompany.CompanyId)
             return NotFound();
         if (user is not null)
         {

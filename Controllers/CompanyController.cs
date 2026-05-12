@@ -28,8 +28,17 @@ public class CompanyController : Controller
     public async Task<IActionResult> Profile()
     {
         var companyId = _currentCompany.CompanyId;
-        if (!User.IsInRole("superadmin") && companyId <= 0)
-            return Forbid();
+
+        if (User.IsInRole("superadmin"))
+        {
+            var allCompanies = await _db.Companies
+                .AsNoTracking()
+                .OrderByDescending(c => c.CreatedAt)
+                .ToListAsync();
+            return View("Companies", allCompanies);
+        }
+
+        if (companyId <= 0) return Forbid();
 
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == companyId);
         if (company is null) return NotFound();

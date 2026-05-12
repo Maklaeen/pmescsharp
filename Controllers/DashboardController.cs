@@ -59,20 +59,33 @@ public class DashboardController : Controller
             ? await _userManager.Users.CountAsync()
             : await _userManager.Users.Where(u => u.CompanyId == companyId).CountAsync();
 
-        var productsCount = await _db.Products.CountAsync();
-        var materialsCount = await _db.Materials.CountAsync();
-        var workOrdersCount = await _db.WorkOrders.CountAsync();
-        var schedulesInProgress = await _db.ProductionSchedules.CountAsync(s => s.Status == "in_progress");
-        var schedulesCompleted = await _db.ProductionSchedules.CountAsync(s => s.Status == "completed");
-        var workOrdersInProgress = await _db.WorkOrders.CountAsync(w => w.Status == "ongoing");
+        var productsCount = isSuperAdmin
+            ? await _db.Products.IgnoreQueryFilters().CountAsync()
+            : await _db.Products.CountAsync();
+        var materialsCount = isSuperAdmin
+            ? await _db.Materials.IgnoreQueryFilters().CountAsync()
+            : await _db.Materials.CountAsync();
+        var workOrdersCount = isSuperAdmin
+            ? await _db.WorkOrders.IgnoreQueryFilters().CountAsync()
+            : await _db.WorkOrders.CountAsync();
+        var schedulesInProgress = isSuperAdmin
+            ? await _db.ProductionSchedules.IgnoreQueryFilters().CountAsync(s => s.Status == "in_progress")
+            : await _db.ProductionSchedules.CountAsync(s => s.Status == "in_progress");
+        var schedulesCompleted = isSuperAdmin
+            ? await _db.ProductionSchedules.IgnoreQueryFilters().CountAsync(s => s.Status == "completed")
+            : await _db.ProductionSchedules.CountAsync(s => s.Status == "completed");
+        var workOrdersInProgress = isSuperAdmin
+            ? await _db.WorkOrders.IgnoreQueryFilters().CountAsync(w => w.Status == "ongoing")
+            : await _db.WorkOrders.CountAsync(w => w.Status == "ongoing");
+        var companiesCount = isSuperAdmin ? await _db.Companies.CountAsync() : 0;
 
         var model = new AdminDashboardViewModel
         {
             Users = usersCount,
             Products = productsCount,
             Materials = materialsCount,
-            WorkOrdersDisplay = workOrdersCount.ToString(),
-            CompanyName = isSuperAdmin || companyId <= 0 ? "" : company.Name,
+            WorkOrdersDisplay = isSuperAdmin ? $"{workOrdersCount} (all companies)" : workOrdersCount.ToString(),
+            CompanyName = isSuperAdmin ? $"{companiesCount} companies" : (companyId <= 0 ? "" : company.Name),
             NeedsCompanyProfileSetup = !isSuperAdmin && companyId > 0 && profile is null,
             WorkOrdersInProgress = workOrdersInProgress,
             SchedulesInProgress = schedulesInProgress,
