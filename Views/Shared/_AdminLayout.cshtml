@@ -310,7 +310,11 @@
     <script>
         // Sync localStorage with server-side theme so it's consistent
         (function () {
-            try { localStorage.setItem('theme', '@userTheme'); } catch (e) { }
+            try {
+                localStorage.setItem('theme', '@userTheme');
+                // Also sync pmes-theme key used by public pages
+                localStorage.setItem('pmes-theme', '@userTheme' === 'light' ? 'light' : 'dark');
+            } catch (e) { }
         })();
     </script>
 </head>
@@ -472,6 +476,30 @@
                     <span class="text-[11px] font-bold text-orange-500 uppercase tracking-wider">@roleName</span>
                 </div>
                 <div class="text-[11px] font-medium text-gray-500 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800">@DateTime.Now.ToString("MMM dd, yyyy")</div>
+
+                {{-- Theme Toggle --}}
+                <div class="relative" id="dash-theme-wrapper">
+                    <button onclick="toggleDashThemeMenu()" title="Toggle theme"
+                            class="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-all duration-200">
+                        <svg id="dt-light" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                        <svg id="dt-dark" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                        <svg id="dt-system" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </button>
+                    <div id="dash-theme-menu" class="hidden absolute right-0 mt-2 w-36 bg-gray-900 border border-white/[0.08] rounded-xl shadow-xl overflow-hidden z-50">
+                        <button onclick="setDashTheme('light')" class="dash-theme-opt w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition" data-t="light">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                            Light
+                        </button>
+                        <button onclick="setDashTheme('dark')" class="dash-theme-opt w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition" data-t="dark">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                            Dark
+                        </button>
+                        <button onclick="setDashTheme('system')" class="dash-theme-opt w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition" data-t="system">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            System
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -508,6 +536,56 @@
 </script>
 
 @await RenderSectionAsync("Scripts", required: false)
+
+<script>
+    // Dashboard theme toggle
+    (function () {
+        const THEME_KEY = 'pmes-theme';
+        const CYCLE = ['system','light','dark'];
+
+        function applyDashTheme(t) {
+            const dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('theme-light', !dark);
+            const tl = document.getElementById('dt-light');
+            const td = document.getElementById('dt-dark');
+            const ts = document.getElementById('dt-system');
+            if (tl) tl.classList.toggle('hidden', t !== 'light');
+            if (td) td.classList.toggle('hidden', t !== 'dark');
+            if (ts) ts.classList.toggle('hidden', t !== 'system');
+            document.querySelectorAll('.dash-theme-opt').forEach(btn => {
+                btn.classList.toggle('text-orange-400', btn.dataset.t === t);
+                btn.classList.toggle('text-gray-300', btn.dataset.t !== t);
+            });
+        }
+
+        window.setDashTheme = function(t) {
+            localStorage.setItem(THEME_KEY, t);
+            localStorage.setItem('theme', t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t);
+            applyDashTheme(t);
+            document.getElementById('dash-theme-menu').classList.add('hidden');
+            // Persist to server
+            fetch('/settings/theme', { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name=__RequestVerificationToken]')?.value ?? '' }, body: JSON.stringify({ theme: t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t }) }).catch(() => {});
+        };
+
+        window.toggleDashThemeMenu = function() {
+            document.getElementById('dash-theme-menu').classList.toggle('hidden');
+        };
+
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('dash-theme-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('dash-theme-menu').classList.add('hidden');
+            }
+        });
+
+        const saved = localStorage.getItem(THEME_KEY) || 'dark';
+        applyDashTheme(saved);
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if ((localStorage.getItem(THEME_KEY) || 'dark') === 'system') applyDashTheme('system');
+        });
+    })();
+</script>
 
 <!-- Page loader -->
 <div id="page-loader">
