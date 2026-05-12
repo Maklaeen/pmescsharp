@@ -54,25 +54,30 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddDefaultTokenProviders();
 
 var google = builder.Configuration.GetSection("Authentication:Google");
-builder.Services.AddAuthentication()
-    .AddGoogle(options =>
-    {
-        options.ClientId = google["ClientId"]!;
-        options.ClientSecret = google["ClientSecret"]!;
-        options.CallbackPath = "/signin-google/callback";
-        options.SignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
-        options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
-        options.CorrelationCookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
-        options.CorrelationCookie.HttpOnly = true;
-        options.CorrelationCookie.IsEssential = true;
-        options.Events.OnRemoteFailure = ctx =>
+var googleClientId = google["ClientId"];
+var googleClientSecret = google["ClientSecret"];
+if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
+{
+    builder.Services.AddAuthentication()
+        .AddGoogle(options =>
         {
-            var error = ctx.Failure?.Message ?? "unknown";
-            ctx.Response.Redirect("/login?error=" + Uri.EscapeDataString(error));
-            ctx.HandleResponse();
-            return Task.CompletedTask;
-        };
-    });
+            options.ClientId = googleClientId;
+            options.ClientSecret = googleClientSecret;
+            options.CallbackPath = "/signin-google/callback";
+            options.SignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
+            options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
+            options.CorrelationCookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+            options.CorrelationCookie.HttpOnly = true;
+            options.CorrelationCookie.IsEssential = true;
+            options.Events.OnRemoteFailure = ctx =>
+            {
+                var error = ctx.Failure?.Message ?? "unknown";
+                ctx.Response.Redirect("/login?error=" + Uri.EscapeDataString(error));
+                ctx.HandleResponse();
+                return Task.CompletedTask;
+            };
+        });
+}
 
 builder.Services.ConfigureExternalCookie(options =>
 {
