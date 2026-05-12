@@ -77,6 +77,7 @@
                         }
                         @if (Model.Status == "planned")
                         {
+                            <a href="/production/schedules/@Model.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
                             <form method="post" action="/production/schedules/@Model.Id/start">
                                 @Html.AntiForgeryToken()
                                 <button class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 text-white transition-all shadow-lg shadow-orange-900/20">Start</button>

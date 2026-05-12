@@ -1,0 +1,115 @@
+@model List<PmesCSharp.Models.ProductionSchedule>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Production Report";
+    string from = ViewBag.From;
+    string to = ViewBag.To;
+    int totalSchedules = ViewBag.TotalSchedules;
+    int completed = ViewBag.Completed;
+    int inProgress = ViewBag.InProgress;
+    int totalPlannedQty = ViewBag.TotalPlannedQty;
+}
+
+<div class="space-y-6">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-6">
+        <form method="get" action="/reports/production" class="flex items-end gap-4 flex-wrap">
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">From</label>
+                <input type="date" name="from" value="@from" class="bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">To</label>
+                <input type="date" name="to" value="@to" class="bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <button type="submit" class="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all">Apply</button>
+            <a href="/reports" class="px-5 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">← Back</a>
+            <button type="button" onclick="window.print()" class="px-5 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">🖨 Print</button>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Total Schedules</div>
+            <div class="text-2xl font-black text-white">@totalSchedules</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Completed</div>
+            <div class="text-2xl font-black text-emerald-400">@completed</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">In Progress</div>
+            <div class="text-2xl font-black text-orange-400">@inProgress</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Total Planned Qty</div>
+            <div class="text-2xl font-black text-blue-400">@totalPlannedQty.ToString("N0")</div>
+        </div>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h3 class="text-lg font-bold text-white mb-6">Production Schedules — @from to @to</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-separate border-spacing-y-2">
+                <thead>
+                    <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                        <th class="px-4 py-3">Schedule</th>
+                        <th class="px-4 py-3">Product</th>
+                        <th class="px-4 py-3">Date</th>
+                        <th class="px-4 py-3">Planned Qty</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Work Orders</th>
+                        <th class="px-4 py-3">QC</th>
+                        <th class="px-4 py-3 text-right">Total Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="8" class="px-4 py-10 text-sm text-gray-500">No schedules found for this period.</td></tr>
+                    }
+                    @foreach (var s in Model)
+                    {
+                        var statusClass = s.Status switch
+                        {
+                            "completed" => "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+                            "in_progress" => "text-orange-400 bg-orange-500/10 border-orange-500/20",
+                            "cancelled" => "text-red-400 bg-red-500/10 border-red-500/20",
+                            _ => "text-gray-400 bg-white/5 border-white/10"
+                        };
+                        var doneWo = s.WorkOrders.Count(w => w.Status == "done");
+                        var passedQc = s.QualityChecks.Count(q => q.Result == "passed");
+                        <tr class="bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                            <td class="px-4 py-3 rounded-l-xl border-y border-l border-white/[0.04]">
+                                <div class="text-sm font-bold text-white">#@s.Id</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm font-semibold text-gray-200">@(s.Product?.ProductName ?? "—")</div>
+                                <div class="text-xs text-gray-600">@(s.Product?.ProductCode ?? "")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-xs text-gray-400">@s.ScheduleDate.ToString("MMM dd, yyyy")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm font-bold text-white">@s.PlannedQuantity.ToString("N0")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg border @statusClass">@s.Status.Replace("_", " ")</span>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-xs text-gray-400">@doneWo / @s.WorkOrders.Count done</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-xs @(passedQc > 0 ? "text-emerald-400" : "text-gray-500")">@(passedQc > 0 ? $"{passedQc} passed" : "—")</div>
+                            </td>
+                            <td class="px-4 py-3 rounded-r-xl border-y border-r border-white/[0.04] text-right">
+                                <div class="text-sm font-bold @(s.ProductionCost != null ? "text-orange-400" : "text-gray-600")">
+                                    @(s.ProductionCost != null ? $"₱{s.ProductionCost.TotalCost:N2}" : "—")
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,6 +1,8 @@
 @model PmesCSharp.ViewModels.Account.LoginViewModel
+@inject IConfiguration Config
 @{
     Layout = null;
+    var siteKey = Config["Recaptcha:SiteKey"] ?? "";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -13,12 +15,6 @@
     <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet">
     <style>
         * { font-family: 'Inter', sans-serif; }
-        .gradient-text {
-            background: linear-gradient(135deg, #f97316, #fb923c, #fdba74);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
         .grid-bg {
             background-image:
                 linear-gradient(rgba(249,115,22,0.03) 1px, transparent 1px),
@@ -44,7 +40,6 @@
         html.light nav { border-color: rgba(0,0,0,0.06) !important; }
         html.light nav a { color: #475569; }
         html.light nav a:hover { color: #0f172a; }
-        html.light .hero-glow { background: radial-gradient(circle, rgba(249,115,22,0.05) 0%, transparent 70%); }
         html.light h1 { color: #0f172a !important; }
         html.light p { color: #64748b !important; }
         html.light .text-gray-500 { color: #94a3b8 !important; }
@@ -97,9 +92,7 @@
             <div class="bg-gray-900/80 border border-white/[0.06] rounded-2xl p-8 backdrop-blur-sm shadow-2xl" data-aos="fade-up" data-aos-duration="600" data-aos-delay="100">
                 @if (TempData["Status"] is string status && !string.IsNullOrWhiteSpace(status))
                 {
-                    <div class="mb-5 text-emerald-400 text-sm text-center bg-emerald-400/10 border border-emerald-400/20 rounded-xl px-4 py-3">
-                        @status
-                    </div>
+                    <div class="mb-5 text-emerald-400 text-sm text-center bg-emerald-400/10 border border-emerald-400/20 rounded-xl px-4 py-3">@status</div>
                 }
                 @if (!ViewData.ModelState.IsValid)
                 {
@@ -139,6 +132,13 @@
                         <a href="/forgot-password" class="text-sm text-orange-400 hover:text-orange-300 transition font-medium">Forgot password?</a>
                     </div>
 
+                    @if (!string.IsNullOrEmpty(siteKey))
+                    {
+                        <div class="flex justify-center">
+                            <div class="cf-turnstile" data-sitekey="@siteKey" data-theme="dark"></div>
+                        </div>
+                    }
+
                     <button type="submit"
                             class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 hover:-translate-y-0.5">
                         Sign In
@@ -153,6 +153,10 @@
         </div>
     </div>
 
+    @if (!string.IsNullOrEmpty(siteKey))
+    {
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    }
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
     <script>
         AOS.init({ once: true, easing: 'ease-out-cubic' });

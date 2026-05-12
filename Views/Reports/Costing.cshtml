@@ -1,0 +1,99 @@
+@model List<PmesCSharp.Models.ProductionCost>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Costing Report";
+    string from = ViewBag.From;
+    string to = ViewBag.To;
+    decimal totalMaterial = ViewBag.TotalMaterialCost;
+    decimal totalLabor = ViewBag.TotalLaborCost;
+    decimal totalCost = ViewBag.TotalCost;
+}
+
+<div class="space-y-6">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-6">
+        <form method="get" action="/reports/costing" class="flex items-end gap-4 flex-wrap">
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">From</label>
+                <input type="date" name="from" value="@from" class="bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">To</label>
+                <input type="date" name="to" value="@to" class="bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <button type="submit" class="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all">Apply</button>
+            <a href="/reports" class="px-5 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">← Back</a>
+            <button type="button" onclick="window.print()" class="px-5 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">🖨 Print</button>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Total Material Cost</div>
+            <div class="text-2xl font-black text-blue-400">₱@totalMaterial.ToString("N2")</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Total Labor Cost</div>
+            <div class="text-2xl font-black text-purple-400">₱@totalLabor.ToString("N2")</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Grand Total</div>
+            <div class="text-2xl font-black text-orange-400">₱@totalCost.ToString("N2")</div>
+        </div>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h3 class="text-lg font-bold text-white mb-6">Cost Breakdown — @from to @to</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-separate border-spacing-y-2">
+                <thead>
+                    <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                        <th class="px-4 py-3">Schedule</th>
+                        <th class="px-4 py-3">Product</th>
+                        <th class="px-4 py-3">Material Cost</th>
+                        <th class="px-4 py-3">Labor Cost</th>
+                        <th class="px-4 py-3">Total Cost</th>
+                        <th class="px-4 py-3">Cost / Unit</th>
+                        <th class="px-4 py-3">Computed By</th>
+                        <th class="px-4 py-3">Computed At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="8" class="px-4 py-10 text-sm text-gray-500">No costing data found for this period.</td></tr>
+                    }
+                    @foreach (var c in Model)
+                    {
+                        <tr class="bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                            <td class="px-4 py-3 rounded-l-xl border-y border-l border-white/[0.04]">
+                                <div class="text-sm font-bold text-white">#@c.ProductionScheduleId</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm font-semibold text-gray-200">@(c.ProductionSchedule?.Product?.ProductName ?? "—")</div>
+                                <div class="text-xs text-gray-600">@(c.ProductionSchedule?.Product?.ProductCode ?? "")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm text-blue-400 font-semibold">₱@c.MaterialCost.ToString("N2")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm text-purple-400 font-semibold">₱@c.LaborCost.ToString("N2")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm text-white font-bold">₱@c.TotalCost.ToString("N2")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm text-orange-400 font-bold">₱@c.CostPerUnit.ToString("N4")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-xs text-gray-400">@(c.ComputedByUser?.FullName ?? c.ComputedByUser?.Email ?? "—")</div>
+                            </td>
+                            <td class="px-4 py-3 rounded-r-xl border-y border-r border-white/[0.04]">
+                                <div class="text-xs text-gray-400">@(c.ComputedAt?.ToString("MMM dd, yyyy HH:mm") ?? "—")</div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

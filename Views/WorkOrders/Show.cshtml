@@ -68,6 +68,13 @@
                             <button class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 text-white transition-all shadow-lg shadow-orange-900/20">Start</button>
                         </form>
                     }
+                    @if (isAdminLike && Model.Status != "cancelled" && Model.Status != "done")
+                    {
+                        <form method="post" action="/production/work-orders/@Model.Id/cancel" onsubmit="return confirm('Cancel this work order?');">
+                            @Html.AntiForgeryToken()
+                            <button class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Cancel</button>
+                        </form>
+                    }
                 </div>
             </div>
 

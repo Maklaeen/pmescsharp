@@ -36,6 +36,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<QualityCheck> QualityChecks => Set<QualityCheck>();
     public DbSet<ProductionCost> ProductionCosts => Set<ProductionCost>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

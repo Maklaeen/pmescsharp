@@ -6,6 +6,7 @@ using PmesCSharp.Data;
 using PmesCSharp.Models;
 using PmesCSharp.ViewModels.Account;
 using System.Security.Claims;
+using PmesCSharp.Services;
 
 namespace PmesCSharp.Controllers;
 
@@ -14,24 +15,24 @@ public class AccountController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IConfiguration _configuration;
+    private readonly IRecaptchaService _recaptchaService;
     private readonly AppDbContext _db;
     private readonly PmesCSharp.Services.EmailService _email;
-    private readonly PmesCSharp.Services.IRecaptchaService _recaptcha;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
+        IRecaptchaService recaptchaService,
         AppDbContext db,
-        PmesCSharp.Services.EmailService email,
-        PmesCSharp.Services.IRecaptchaService recaptcha)
+        PmesCSharp.Services.EmailService email)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _configuration = configuration;
-       _db = db;
+        _recaptchaService = recaptchaService;
+        _db = db;
         _email = email;
-        _recaptcha = recaptcha;
     }
 
     [HttpGet("/login")]
@@ -43,19 +44,13 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
+        if (!ModelState.IsValid) return View(model);
 
-        var captchaOk = await _recaptcha.VerifyAsync(
-            model.RecaptchaToken,
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
-            cancellationToken);
-
-        if (!captchaOk)
+        var recaptchaToken = Request.Form["cf-turnstile-response"].ToString();
+        var recaptchaValid = await _recaptchaService.VerifyAsync(recaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
+        if (!recaptchaValid)
         {
-            ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
+            ModelState.AddModelError(string.Empty, "Verification failed. Please try again.");
             return View(model);
         }
 
@@ -72,14 +67,13 @@ public class AccountController : Controller
             return View(model);
         }
 
-     var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
+        var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, "These credentials do not match our records.");
             return View(model);
         }
 
-        // Re-issue auth cookie so CompanyId claim is present
         await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
 
         var roles = await _userManager.GetRolesAsync(user);
@@ -95,19 +89,13 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Register(RegisterViewModel model, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
+        if (!ModelState.IsValid) return View(model);
 
-        var captchaOk = await _recaptcha.VerifyAsync(
-            model.RecaptchaToken,
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
-            cancellationToken);
-
-        if (!captchaOk)
+        var recaptchaToken = Request.Form["cf-turnstile-response"].ToString();
+        var recaptchaValid = await _recaptchaService.VerifyAsync(recaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
+        if (!recaptchaValid)
         {
-            ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
+            ModelState.AddModelError(string.Empty, "Verification failed. Please try again.");
             return View(model);
         }
 
@@ -190,79 +178,6 @@ public class AccountController : Controller
             ModelState.AddModelError(nameof(model.CompanyName), "Company name/code already exists. Please try a different name.");
             return View(model);
         }
-    }
-
-    [HttpGet("/signin-google")]
-    [AllowAnonymous]
-    public IActionResult SignInWithGoogle([FromQuery] string? returnUrl = null)
-    {
-        returnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/dashboard" : returnUrl;
-        var props = _signInManager.ConfigureExternalAuthenticationProperties("Google",
-            Url.Action(nameof(GoogleCallback), "Account", new { returnUrl }, Request.Scheme)!);
-        return Challenge(props, "Google");
-    }
-
-    [HttpGet("/signin-google/callback")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GoogleCallback([FromQuery] string? returnUrl = null, [FromQuery] string? remoteError = null)
-    {
-        returnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/dashboard" : returnUrl;
-
-        if (!string.IsNullOrWhiteSpace(remoteError))
-        {
-            TempData["Status"] = "Google sign-in failed. Please try again.";
-            return Redirect("/login");
-        }
-
-        ExternalLoginInfo? info;
-        try
-        {
-            info = await _signInManager.GetExternalLoginInfoAsync();
-        }
-        catch
-        {
-            TempData["Status"] = "Google sign-in failed. Please try again.";
-            return Redirect("/login");
-        }
-        if (info is null)
-        {
-            TempData["Status"] = "Google sign-in failed. Please try again.";
-            return Redirect("/login");
-        }
-
-        var email = info.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.Email)
-            ?? info.Principal.FindFirstValue("email");
-
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            TempData["Status"] = "Google sign-in failed (missing email).";
-            return Redirect("/login");
-        }
-
-        var user = await _userManager.FindByEmailAsync(email);
-        if (user is null)
-        {
-            TempData["Status"] = "No PMES account found for this Google email. Please register first.";
-            return Redirect("/register");
-        }
-
-        if (!user.IsApproved)
-        {
-            TempData["Status"] = "Your account is pending admin approval.";
-            return Redirect("/login");
-        }
-
-        // Link external login to existing account if not yet linked.
-        var linked = await _userManager.GetLoginsAsync(user);
-        if (!linked.Any(l => l.LoginProvider == info.LoginProvider && l.ProviderKey == info.ProviderKey))
-        {
-            await _userManager.AddLoginAsync(user, info);
-        }
-
-        await _signInManager.SignInAsync(user, isPersistent: false);
-
-        var roles = await _userManager.GetRolesAsync(user);
-        return Redirect(ResolveDashboardPath(roles));
     }
 
     private static string SlugifyCompanyCode(string name)

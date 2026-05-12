@@ -62,6 +62,9 @@ public class DashboardController : Controller
         var productsCount = await _db.Products.CountAsync();
         var materialsCount = await _db.Materials.CountAsync();
         var workOrdersCount = await _db.WorkOrders.CountAsync();
+        var schedulesInProgress = await _db.ProductionSchedules.CountAsync(s => s.Status == "in_progress");
+        var schedulesCompleted = await _db.ProductionSchedules.CountAsync(s => s.Status == "completed");
+        var workOrdersInProgress = await _db.WorkOrders.CountAsync(w => w.Status == "ongoing");
 
         var model = new AdminDashboardViewModel
         {
@@ -71,6 +74,9 @@ public class DashboardController : Controller
             WorkOrdersDisplay = workOrdersCount.ToString(),
             CompanyName = isSuperAdmin || companyId <= 0 ? "" : company.Name,
             NeedsCompanyProfileSetup = !isSuperAdmin && companyId > 0 && profile is null,
+            WorkOrdersInProgress = workOrdersInProgress,
+            SchedulesInProgress = schedulesInProgress,
+            SchedulesCompleted = schedulesCompleted,
         };
 
         return View(model);

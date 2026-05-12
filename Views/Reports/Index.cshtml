@@ -1,0 +1,31 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Reports";
+}
+
+<div class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        @foreach (var report in new[]
+        {
+            new { Title = "Production Report", Desc = "Summary of all production schedules — planned qty, status, and completion rate.", Href = "/reports/production", Icon = "M4 6h16M4 12h16m-7 6h7", Color = "text-orange-400", Bg = "bg-orange-500/10", Border = "border-orange-500/20" },
+            new { Title = "Costing Report", Desc = "Material and labor costs per production batch with cost-per-unit breakdown.", Href = "/reports/costing", Icon = "M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z", Color = "text-emerald-400", Bg = "bg-emerald-500/10", Border = "border-emerald-500/20" },
+            new { Title = "Quality Report", Desc = "QC inspection results — pass/fail rates, quantities, and defect notes.", Href = "/reports/quality", Icon = "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20" },
+        })
+        {
+            <a href="@report.Href"
+               class="group bg-[#111114] border border-white/[0.05] rounded-[24px] p-7 hover:border-orange-500/20 hover:bg-[#16161a] transition-all duration-300 block">
+                <div class="w-12 h-12 @report.Bg border @report.Border rounded-2xl flex items-center justify-center @report.Color mb-5 group-hover:scale-110 transition-transform duration-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="@report.Icon"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-white text-lg mb-2">@report.Title</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">@report.Desc</p>
+                <div class="mt-5 flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    View Report
+                    <svg class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                </div>
+            </a>
+        }
+    </div>
+</div>

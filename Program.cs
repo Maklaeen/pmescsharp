@@ -12,6 +12,9 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddHttpClient();
 
+// Register RecaptchaService
+builder.Services.AddScoped<PmesCSharp.Services.IRecaptchaService, PmesCSharp.Services.RecaptchaService>();
+
 var configuredKeysPath = builder.Configuration["DataProtection:KeysPath"];
 var keysPath = string.IsNullOrWhiteSpace(configuredKeysPath)
     ? Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")
@@ -27,7 +30,6 @@ builder.Services
 builder.Services.AddScoped<PmesCSharp.Services.EmailService>();
 builder.Services.AddScoped<PmesCSharp.Services.IEmailSender, PmesCSharp.Services.SmtpEmailSender>();
 builder.Services.AddScoped<PmesCSharp.Services.IAuditLogger, PmesCSharp.Services.AuditLogger>();
-builder.Services.AddScoped<PmesCSharp.Services.IRecaptchaService, PmesCSharp.Services.RecaptchaService>();
 builder.Services.AddHttpClient<PmesCSharp.Services.PayMongoService>();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -53,30 +55,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
-var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
 
-var authBuilder = builder.Services.AddAuthentication();
-if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
-{
-    authBuilder.AddGoogle(options =>
-    {
-        options.ClientId = googleClientId;
-        options.ClientSecret = googleClientSecret;
-        options.CallbackPath = "/signin-google/callback";
-        options.SignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
-        options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
-        options.CorrelationCookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest;
-        options.CorrelationCookie.HttpOnly = true;
-        options.CorrelationCookie.IsEssential = true;
-        options.Events.OnRemoteFailure = ctx =>
-        {
-            ctx.Response.Redirect("/login?error=google_failed");
-            ctx.HandleResponse();
-            return Task.CompletedTask;
-        };
-    });
-}
 
 builder.Services.ConfigureApplicationCookie(options =>
 {

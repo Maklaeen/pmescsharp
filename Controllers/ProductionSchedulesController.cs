@@ -146,6 +146,50 @@ public class ProductionSchedulesController : Controller
         return Redirect($"/production/schedules/{id}");
     }
 
+    [HttpGet("/production/schedules/{id:int}/edit")]
+    [Authorize(Roles = "superadmin,admin,planner")]
+    public async Task<IActionResult> Edit(int id)
+    {
+        var schedule = await _db.ProductionSchedules.Include(s => s.Product).FirstOrDefaultAsync(s => s.Id == id);
+        if (schedule is null) return NotFound();
+        if (schedule.Status != "planned")
+        {
+            TempData["Error"] = "Only planned schedules can be edited.";
+            return Redirect($"/production/schedules/{id}");
+        }
+        ViewBag.Products = await _db.Products.Where(p => p.Status == "active").OrderBy(p => p.ProductName).ToListAsync();
+        ViewBag.ScheduleId = id;
+        ViewBag.CurrentProductId = schedule.ProductId;
+        ViewBag.CurrentPlannedQty = schedule.PlannedQuantity;
+        ViewBag.CurrentScheduleDate = schedule.ScheduleDate.ToString("yyyy-MM-dd");
+        ViewBag.CurrentExpectedEndAt = schedule.ExpectedEndAt?.ToString("yyyy-MM-dd HH:mm") ?? "";
+        return View();
+    }
+
+    [HttpPost("/production/schedules/{id:int}/edit")]
+    [Authorize(Roles = "superadmin,admin,planner")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Update(int id, [FromForm] int productId, [FromForm] int plannedQuantity,
+        [FromForm] string scheduleDate, [FromForm] string? expectedEndAt)
+    {
+        var schedule = await _db.ProductionSchedules.FindAsync(id);
+        if (schedule is null) return NotFound();
+        if (schedule.Status != "planned")
+        {
+            TempData["Error"] = "Only planned schedules can be edited.";
+            return Redirect($"/production/schedules/{id}");
+        }
+
+        schedule.ProductId = productId;
+        schedule.PlannedQuantity = plannedQuantity;
+        schedule.ScheduleDate = DateOnly.Parse(scheduleDate);
+        schedule.ExpectedEndAt = string.IsNullOrWhiteSpace(expectedEndAt) ? null : DateTime.Parse(expectedEndAt);
+        schedule.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        TempData["Success"] = "Schedule updated.";
+        return Redirect($"/production/schedules/{id}");
+    }
+
     [HttpPost("/production/schedules/{id:int}/start")]
     [Authorize(Roles = "superadmin,admin,planner")]
     [ValidateAntiForgeryToken]

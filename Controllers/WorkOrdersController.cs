@@ -95,6 +95,21 @@ public class WorkOrdersController : Controller
         return Redirect($"/production/work-orders/{id}");
     }
 
+    [HttpPost("/production/work-orders/{id:int}/cancel")]
+    [Authorize(Roles = "superadmin,admin,planner")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(int id)
+    {
+        var wo = await _db.WorkOrders.FindAsync(id);
+        if (wo is null) return NotFound();
+
+        wo.Status = "cancelled";
+        wo.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        TempData["Success"] = "Work order cancelled.";
+        return Redirect($"/production/work-orders/{id}");
+    }
+
     [HttpPost("/production/work-orders/{id:int}/assign")]
     [Authorize(Roles = "superadmin,admin,planner")]
     [ValidateAntiForgeryToken]

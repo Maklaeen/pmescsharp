@@ -1,6 +1,8 @@
 @model PmesCSharp.ViewModels.Account.RegisterViewModel
+@inject IConfiguration Config
 @{
     Layout = null;
+    var siteKey = Config["Recaptcha:SiteKey"] ?? "";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -145,6 +147,13 @@
                         <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.ConfirmPassword)</span>
                     </div>
 
+                    @if (!string.IsNullOrEmpty(siteKey))
+                    {
+                        <div class="flex justify-center">
+                            <div class="cf-turnstile" data-sitekey="@siteKey" data-theme="dark"></div>
+                        </div>
+                    }
+
                     <button type="submit"
                             class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 hover:-translate-y-0.5">
                         Create Account
@@ -159,6 +168,10 @@
         </div>
     </div>
 
+    @if (!string.IsNullOrEmpty(siteKey))
+    {
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    }
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
     <script>
         AOS.init({ once: true, easing: 'ease-out-cubic' });

@@ -1,0 +1,67 @@
+@using PmesCSharp.Models
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Edit Schedule";
+    var products = ViewBag.Products as List<Product> ?? [];
+    var scheduleId = (int)ViewBag.ScheduleId;
+    var currentProductId = (int)ViewBag.CurrentProductId;
+    var currentPlannedQty = (int)ViewBag.CurrentPlannedQty;
+    string currentScheduleDate = ViewBag.CurrentScheduleDate;
+    string currentExpectedEndAt = ViewBag.CurrentExpectedEndAt;
+}
+
+@if (TempData["Error"] is string error)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">@error</div>
+}
+
+<div class="max-w-3xl">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-white tracking-tight">Edit Schedule #@scheduleId</h2>
+            <p class="text-sm text-gray-500 mt-1">Only planned schedules can be edited.</p>
+        </div>
+
+        <form method="post" action="/production/schedules/@scheduleId/edit" class="space-y-6">
+            @Html.AntiForgeryToken()
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Product</label>
+                <select name="productId" class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <option value="">Select product…</option>
+                    @foreach (var p in products)
+                    {
+                        if (p.Id == currentProductId) { <option value="@p.Id" selected>@p.ProductName (@p.ProductCode)</option> }
+                        else { <option value="@p.Id">@p.ProductName (@p.ProductCode)</option> }
+                    }
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Planned Quantity</label>
+                    <input type="number" min="1" name="plannedQuantity" value="@currentPlannedQty"
+                        class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Schedule Date</label>
+                    <input type="text" name="scheduleDate" value="@currentScheduleDate"
+                        class="js-datepicker w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        autocomplete="off">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Expected End (optional)</label>
+                <input type="text" name="expectedEndAt" value="@currentExpectedEndAt"
+                    class="js-datetimepicker w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    autocomplete="off">
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-4">
+                <a href="/production/schedules/@scheduleId" class="px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Cancel</a>
+                <button type="submit" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
