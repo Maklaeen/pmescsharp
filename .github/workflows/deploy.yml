@@ -19,10 +19,23 @@ jobs:
       - name: Publish
         run: dotnet publish PmesCSharp.csproj -c Release -o ./publish
 
-      - name: Create app_offline.htm
-        run: echo "<h1>Site Updating</h1><p>We'll be back in a minute.</p>" > ./publish/app_offline.htm
+      - name: Put app offline
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: site66006.siteasp.net
+          username: site66006
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./publish/
+          server-dir: wwwroot/
+          dangerous-clean-slate: false
+          exclude: |
+            **
+            !app_offline.htm
 
-      - name: Deploy via FTP
+      - name: Wait for app to stop
+        run: Start-Sleep -Seconds 8
+
+      - name: Deploy files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: site66006.siteasp.net
@@ -35,4 +48,4 @@ jobs:
             **/logs/**
             **/wwwroot/images/**
             **/appsettings.json
-
+            **/app_offline.htm
