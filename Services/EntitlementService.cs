@@ -58,43 +58,43 @@ public sealed class EntitlementService
     public async Task<LimitCheckResult> EnsureCanCreateProductAsync(CancellationToken ct = default)
     {
         var ent = await GetCurrentCompanyEntitlementsAsync(ct);
-        if (ent.MaxProducts <= 0) return LimitCheckResult.Allowed();
+        if (ent.MaxProducts <= 0) return LimitCheckResult.Allowed1();
 
         var count = await _db.Products.CountAsync(ct);
         return count >= ent.MaxProducts
             ? LimitCheckResult.Blocked($"Product limit reached ({count}/{ent.MaxProducts}). Upgrade to Pro to add more products.")
-            : LimitCheckResult.Allowed();
+            : LimitCheckResult.Allowed1();
     }
 
     public async Task<LimitCheckResult> EnsureCanCreateMaterialAsync(CancellationToken ct = default)
     {
         var ent = await GetCurrentCompanyEntitlementsAsync(ct);
-        if (ent.MaxMaterials <= 0) return LimitCheckResult.Allowed();
+        if (ent.MaxMaterials <= 0) return LimitCheckResult.Allowed1();
 
         var count = await _db.Materials.CountAsync(ct);
         return count >= ent.MaxMaterials
             ? LimitCheckResult.Blocked($"Material limit reached ({count}/{ent.MaxMaterials}). Upgrade to Pro to add more materials.")
-            : LimitCheckResult.Allowed();
+            : LimitCheckResult.Allowed1();
     }
 
     public async Task<LimitCheckResult> EnsureCanApproveMoreUsersAsync(UserManager<ApplicationUser> userManager, CancellationToken ct = default)
     {
         var ent = await GetCurrentCompanyEntitlementsAsync(ct);
-        if (ent.MaxUsers <= 0) return LimitCheckResult.Allowed();
+        if (ent.MaxUsers <= 0) return LimitCheckResult.Allowed1();
 
         var companyId = _currentCompany.CompanyId;
-        if (companyId <= 0) return LimitCheckResult.Allowed();
+        if (companyId <= 0) return LimitCheckResult.Allowed1();
 
         var approvedCount = await userManager.Users.CountAsync(u => u.CompanyId == companyId && u.IsApproved && !u.IsArchived, ct);
         return approvedCount >= ent.MaxUsers
             ? LimitCheckResult.Blocked($"User limit reached ({approvedCount}/{ent.MaxUsers}). You can still invite users, but you cannot approve more until you upgrade.")
-            : LimitCheckResult.Allowed();
+            : LimitCheckResult.Allowed1();
     }
 
     public async Task<LimitCheckResult> EnsureCanGenerateMoreWorkOrdersThisMonthAsync(CancellationToken ct = default)
     {
         var ent = await GetCurrentCompanyEntitlementsAsync(ct);
-        if (ent.MaxWorkOrdersPerMonth <= 0) return LimitCheckResult.Allowed();
+        if (ent.MaxWorkOrdersPerMonth <= 0) return LimitCheckResult.Allowed1();
 
         var now = DateTime.UtcNow;
         var start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -103,7 +103,7 @@ public sealed class EntitlementService
         var count = await _db.WorkOrders.CountAsync(w => w.CreatedAt >= start && w.CreatedAt < end, ct);
         return count >= ent.MaxWorkOrdersPerMonth
             ? LimitCheckResult.Blocked($"Work order monthly limit reached ({count}/{ent.MaxWorkOrdersPerMonth}). Upgrade to Pro to increase limits.")
-            : LimitCheckResult.Allowed();
+            : LimitCheckResult.Allowed1();
     }
 }
 
@@ -135,6 +135,6 @@ public sealed record CompanyEntitlements(
 
 public sealed record LimitCheckResult(bool Allowed, string? Message)
 {
-    public static LimitCheckResult Allowed() => new(true, null);
+    public static LimitCheckResult Allowed1() => new(true, null);
     public static LimitCheckResult Blocked(string message) => new(false, message);
 }
