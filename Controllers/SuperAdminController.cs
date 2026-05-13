@@ -139,12 +139,14 @@ public class SuperAdminController : Controller
         var items = await _db.Companies
             .AsNoTracking()
             .OrderByDescending(c => c.CreatedAt)
-            .Select(c => new
+            .Select(c => new PmesCSharp.ViewModels.SuperAdmin.CompanySubscriptionListItemViewModel
             {
-                c.Id,
-                c.Name,
-                c.Code,
-                Subscription = _db.CompanySubscriptions.AsNoTracking().FirstOrDefault(s => s.CompanyId == c.Id)
+                CompanyId = c.Id,
+                Name = c.Name,
+                Code = c.Code,
+                Plan = _db.CompanySubscriptions.AsNoTracking().Where(s => s.CompanyId == c.Id).Select(s => (SubscriptionPlan?)s.Plan).FirstOrDefault(),
+                Status = _db.CompanySubscriptions.AsNoTracking().Where(s => s.CompanyId == c.Id).Select(s => (SubscriptionStatus?)s.Status).FirstOrDefault(),
+                CurrentPeriodEndsAt = _db.CompanySubscriptions.AsNoTracking().Where(s => s.CompanyId == c.Id).Select(s => s.CurrentPeriodEndsAt).FirstOrDefault(),
             })
             .ToListAsync(ct);
 

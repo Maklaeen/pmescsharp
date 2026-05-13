@@ -6,7 +6,7 @@ namespace PmesCSharp.ViewModels.Subscription;
 public class SubscriptionSetupViewModel
 {
     [Required]
-    public SubscriptionPlan Plan { get; set; } = SubscriptionPlan.Standard;
+    public SubscriptionPlan Plan { get; set; } = SubscriptionPlan.Free;
 
     [EmailAddress]
     public string? BillingEmail { get; set; }

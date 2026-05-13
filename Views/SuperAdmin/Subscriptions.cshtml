@@ -1,4 +1,4 @@
-@model IEnumerable<dynamic>
+@model List<PmesCSharp.ViewModels.SuperAdmin.CompanySubscriptionListItemViewModel>
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Company Subscriptions";
@@ -32,15 +32,14 @@
             <tbody>
             @foreach (var row in Model)
             {
-                var sub = row.Subscription as PmesCSharp.Models.CompanySubscription;
                 <tr class="bg-white/[0.02] border border-white/[0.05]">
                     <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05] text-white font-bold">@row.Name</td>
                     <td class="px-6 py-5 border-y border-white/[0.05] text-gray-400">@row.Code</td>
-                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">@(sub?.Plan.ToString() ?? "—")</td>
-                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">@(sub?.Status.ToString() ?? "—")</td>
-                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-400">@(sub?.CurrentPeriodEndsAt?.ToString("yyyy-MM-dd") ?? "—")</td>
+                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">@(row.Plan?.ToString() ?? "—")</td>
+                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">@(row.Status?.ToString() ?? "—")</td>
+                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-400">@(row.CurrentPeriodEndsAt?.ToString("yyyy-MM-dd") ?? "—")</td>
                     <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
-                        <a href="/superadmin/subscriptions/@row.Id" class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 text-white transition-all">Override</a>
+                        <a href="/superadmin/subscriptions/@row.CompanyId" class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 text-white transition-all">Override</a>
                     </td>
                 </tr>
             }
