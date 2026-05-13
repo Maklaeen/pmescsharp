@@ -131,7 +131,6 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 
-// Auto-migrate on startup
 try
 {
     using var scope = app.Services.CreateScope();
@@ -144,7 +143,7 @@ catch (Exception ex)
     logger.LogError(ex, "Migration failed.");
 }
 
-// Seed after migration
+
 try
 {
     await IdentitySeed.EnsureSeededAsync(app.Services, app.Configuration);
