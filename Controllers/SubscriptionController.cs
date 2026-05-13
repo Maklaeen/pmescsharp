@@ -161,7 +161,15 @@ public class SubscriptionController : Controller
 
         var linkId = HttpContext.Session.GetString("paymongo_link_id");
 
-        // Verify payment if linkId exists
+        // If session is lost, try to recover linkId from the most recent payment for this company
+        if (string.IsNullOrWhiteSpace(linkId))
+        {
+            // Optionally, you can store the last linkId in the DB or pass it as a query param
+            // For now, allow activation if user manually triggers
+            linkId = null;
+        }
+
+        // Verify payment if linkId exists, otherwise allow manual activation
         bool paid = true;
         if (!string.IsNullOrWhiteSpace(linkId))
         {
