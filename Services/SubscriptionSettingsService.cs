@@ -25,13 +25,16 @@ public sealed class SubscriptionSettingsService
         if (row is not null) return row;
 
         // Safe defaults if not seeded yet
-        return plan == SubscriptionPlan.Pro
-            ? new SubscriptionPlanDefinition
+        if (plan == SubscriptionPlan.Pro)
+        {
+            var monthly = 4900_00;
+            var annual = (int)Math.Round(monthly * 12 * 0.9); // 10% discount
+            return new SubscriptionPlanDefinition
             {
                 Plan = SubscriptionPlan.Pro,
                 Currency = "PHP",
-                MonthlyPriceCentavos = 4900_00,
-                AnnualPriceCentavos = 49000_00,
+                MonthlyPriceCentavos = monthly,
+                AnnualPriceCentavos = annual,
                 MaxUsers = 0,
                 MaxProducts = 0,
                 MaxMaterials = 0,
@@ -40,8 +43,11 @@ public sealed class SubscriptionSettingsService
                 EnableReports = true,
                 EnableCosting = true,
                 EnableAuditLogs = true,
-            }
-            : new SubscriptionPlanDefinition
+            };
+        }
+        else
+        {
+            return new SubscriptionPlanDefinition
             {
                 Plan = SubscriptionPlan.Free,
                 Currency = "PHP",
@@ -56,5 +62,6 @@ public sealed class SubscriptionSettingsService
                 EnableCosting = true,
                 EnableAuditLogs = true,
             };
+        }
     }
 }

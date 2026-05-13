@@ -60,8 +60,11 @@ public class SubscriptionController : Controller
             return Forbid();
         }
 
-        var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, ct);
-        if (existing) return Redirect("/subscription");
+        // Allow access to setup page even if already on Free plan, so user can upgrade
+        // Only redirect if already on Pro and Active
+        var existing = await _db.Set<CompanySubscription>().FirstOrDefaultAsync(s => s.CompanyId == companyId, ct);
+        if (existing != null && existing.Plan == SubscriptionPlan.Pro && existing.Status == SubscriptionStatus.Active)
+            return Redirect("/subscription");
 
         var user = await _userManager.GetUserAsync(User);
         ViewBag.BillingEmail = user?.Email ?? "";

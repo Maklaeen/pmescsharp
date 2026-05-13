@@ -58,8 +58,17 @@
             </div>
             <div class="text-lg font-bold text-white mb-1">Pro</div>
             <div class="text-xs text-gray-500 mb-4">Advanced controls</div>
-            <div class="text-4xl font-black text-white mb-1">₱@((planPro?.MonthlyPriceCentavos ?? 4900_00) / 100)<span class="text-base font-normal text-gray-500">/mo</span></div>
-            <div class="text-xs text-gray-600 mb-6">or ₱@((planPro?.AnnualPriceCentavos ?? 49000_00) / 100)/yr</div>
+             <div class="text-4xl font-black text-white mb-1">
+                 ₱@((planPro?.MonthlyPriceCentavos ?? 4900_00) / 100)
+                 <span class="text-base font-normal text-gray-500">/mo</span>
+             </div>
+             <div class="text-xs text-gray-600 mb-6">
+                 or ₱@(
+                     planPro != null
+                         ? ((int)Math.Round((planPro.MonthlyPriceCentavos * 12) * 0.9) / 100)
+                         : (int)Math.Round(4900_00 * 12 * 0.9) / 100
+                 )/yr <span class="text-orange-400 font-bold">(10% off)</span>
+             </div>
             <ul class="space-y-2.5 text-sm text-gray-400">
                 @foreach (var f in new[] { "Everything in Free", "Production costing & reports", "Advanced audit & approvals", "Priority support & onboarding" })
                 {
@@ -127,19 +136,7 @@
         </form>
     </div>
 
-    <div class="mt-6 bg-blue-500/5 border border-blue-500/20 rounded-2xl p-5">
-        <div class="flex items-start gap-3">
-            <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <div>
-                <div class="text-sm font-bold text-blue-400 mb-1">Test Mode — Use these test card details</div>
-                <div class="text-xs text-gray-400 space-y-1">
-                    <div>Card Number: <span class="font-mono text-white">4343 4343 4343 4345</span></div>
-                    <div>Expiry: <span class="font-mono text-white">any future date</span> &nbsp; CVC: <span class="font-mono text-white">any 3 digits</span></div>
-                    <div>Name: <span class="font-mono text-white">any name</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Test card details removed -->
 </div>
 
 <script>
