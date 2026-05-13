@@ -130,22 +130,22 @@
                                         <div class="text-xs text-gray-600">@row.Material.MaterialCode</div>
                                     </td>
                                     <td class="px-6 py-5 border-y border-white/[0.05]">
-                                        <span class="text-sm font-semibold text-gray-200">@((decimal)row.Required).ToString("G")</span>
+                                        <span class="text-sm font-semibold text-gray-200">@(((decimal)row.Required).ToString("G"))</span>
                                         <span class="text-xs text-gray-600">@row.Unit</span>
                                     </td>
                                     <td class="px-6 py-5 border-y border-white/[0.05]">
-                                        <span class="text-sm font-semibold text-gray-200">@((decimal)row.Available).ToString("G")</span>
+                                        <span class="text-sm font-semibold text-gray-200">@(((decimal)row.Available).ToString("G"))</span>
                                     </td>
                                     <td class="px-6 py-5 border-y border-white/[0.05]">
                                         <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border @(isShort ? "text-red-300 bg-red-500/10 border-red-500/20" : "text-emerald-300 bg-emerald-500/10 border-emerald-500/20")">
-                                            @((decimal)row.Shortage).ToString("G")
+                                            @(((decimal)row.Shortage).ToString("G"))
                                         </span>
                                     </td>
                                     <td class="px-6 py-5 border-y border-white/[0.05]">
-                                        <span class="text-xs text-gray-400">@((decimal)row.UnitCost).ToString("N2")</span>
+                                        <span class="text-xs text-gray-400">@(((decimal)row.UnitCost).ToString("N2"))</span>
                                     </td>
                                     <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
-                                        <span class="text-sm font-bold text-white">@((decimal)row.RequiredCost).ToString("N2")</span>
+                                        <span class="text-sm font-bold text-white">@(((decimal)row.RequiredCost).ToString("N2"))</span>
                                     </td>
                                 </tr>
                             }
