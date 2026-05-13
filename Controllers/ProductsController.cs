@@ -12,11 +12,13 @@ public class ProductsController : Controller
 {
     private readonly AppDbContext _db;
     private readonly ICurrentCompany _currentCompany;
+    private readonly PmesCSharp.Services.EntitlementService _entitlements;
 
-    public ProductsController(AppDbContext db, ICurrentCompany currentCompany)
+    public ProductsController(AppDbContext db, ICurrentCompany currentCompany, PmesCSharp.Services.EntitlementService entitlements)
     {
         _db = db;
         _currentCompany = currentCompany;
+        _entitlements = entitlements;
     }
 
     [HttpGet("/admin/products")]
@@ -43,6 +45,13 @@ public class ProductsController : Controller
     public async Task<IActionResult> Store(ProductFormViewModel model)
     {
         if (!ModelState.IsValid) return View("Create", model);
+
+        var canCreate = await _entitlements.EnsureCanCreateProductAsync();
+        if (!canCreate.Allowed)
+        {
+            TempData["Error"] = canCreate.Message;
+            return Redirect("/admin/products");
+        }
 
         var companyId = _currentCompany.CompanyId;
         var existing = await _db.Products.AnyAsync(p => p.ProductCode == model.ProductCode && p.CompanyId == companyId);

@@ -193,7 +193,7 @@ public class AccountController : Controller
 
     [HttpGet("/signin-google/complete")]
     [AllowAnonymous]
-    public async Task<IActionResult> GoogleComplete()
+    public async Task<IActionResult> GoogleComplete(CancellationToken cancellationToken)
     {
         var info = await _signInManager.GetExternalLoginInfoAsync();
         if (info is null) { TempData["Error"] = "Google sign-in failed."; return Redirect("/login"); }
@@ -209,9 +209,47 @@ public class AccountController : Controller
         if (!logins.Any(l => l.LoginProvider == info.LoginProvider && l.ProviderKey == info.ProviderKey))
             await _userManager.AddLoginAsync(user, info);
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
+        // If user has no roles yet, default to Admin (never SuperAdmin).
         var roles = await _userManager.GetRolesAsync(user);
-        return Redirect(ResolveDashboardPath(roles));
+        if (roles.Count == 0)
+        {
+            await _userManager.AddToRoleAsync(user, "admin");
+            roles = await _userManager.GetRolesAsync(user);
+        }
+
+        await _signInManager.SignInAsync(user, isPersistent: false);
+        var redirectPath = await ResolvePostSignInPathAsync(user, roles, cancellationToken);
+        return Redirect(redirectPath);
+    }
+
+    private async Task<string> ResolvePostSignInPathAsync(ApplicationUser user, IList<string> roles, CancellationToken cancellationToken)
+    {
+        // Onboarding flow for admins: require subscription + company profile.
+        if (roles.Contains("admin") || roles.Contains("superadmin"))
+        {
+            if (!roles.Contains("superadmin") && user.CompanyId is int companyId && companyId > 0)
+            {
+                var hasSubscription = await _db.Set<CompanySubscription>()
+                    .AsNoTracking()
+                    .AnyAsync(s => s.CompanyId == companyId, cancellationToken);
+                if (!hasSubscription) return "/subscription/setup";
+
+                var hasCompanyProfile = await _db.CompanyProfiles
+                    .AsNoTracking()
+                    .AnyAsync(p => p.CompanyId == companyId, cancellationToken);
+                if (!hasCompanyProfile) return "/company/profile";
+            }
+        }
+
+        // User profile setup (for any role)
+        var needsUserProfile = string.IsNullOrWhiteSpace(user.FullName)
+            || user.DateOfBirth is null
+            || string.IsNullOrWhiteSpace(user.MobileNumber)
+            || string.IsNullOrWhiteSpace(user.Sex);
+
+        if (needsUserProfile) return "/profile/edit";
+
+        return ResolveDashboardPath(roles);
     }
 
     [HttpGet("/forgot-password")]

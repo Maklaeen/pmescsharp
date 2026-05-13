@@ -15,14 +15,24 @@ public class UsersController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ICurrentCompany _currentCompany;
     private readonly IAuditLogger _audit;
+    private readonly IConfiguration _configuration;
+    private readonly PmesCSharp.Services.EntitlementService _entitlements;
 
     private static readonly string[] AllRoles = ["superadmin", "admin", "planner", "inventory", "operator", "qc"];
 
-    public UsersController(UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany, IAuditLogger audit)
+    public UsersController(UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany, IAuditLogger audit, IConfiguration configuration, PmesCSharp.Services.EntitlementService entitlements)
     {
         _userManager = userManager;
        _currentCompany = currentCompany;
        _audit = audit;
+        _configuration = configuration;
+        _entitlements = entitlements;
+    }
+
+    private string[] GetAssignableRoles()
+    {
+        if (User.IsInRole("superadmin")) return AllRoles;
+        return AllRoles.Where(r => !string.Equals(r, "superadmin", StringComparison.OrdinalIgnoreCase)).ToArray();
     }
 
     [HttpGet("/admin/users")]
@@ -45,7 +55,7 @@ public class UsersController : Controller
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            userRoles[user.Id] = roles.FirstOrDefault() ?? "superadmin";
+            userRoles[user.Id] = roles.FirstOrDefault() ?? "admin";
         }
 
         var totalUsers = await query.CountAsync();
@@ -101,6 +111,17 @@ public class UsersController : Controller
             return Redirect("/users/pending");
         }
 
+        // Enforce MaxUsers on approval (invites still allowed even on Free).
+        if (!isSuperAdmin)
+        {
+            var canApprove = await _entitlements.EnsureCanApproveMoreUsersAsync(_userManager, cancellationToken);
+            if (!canApprove.Allowed)
+            {
+                TempData["Error"] = canApprove.Message;
+                return Redirect("/users/pending");
+            }
+        }
+
         user.IsApproved = true;
         user.ApprovedAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
@@ -148,7 +169,7 @@ public class UsersController : Controller
     [HttpGet("/users/create")]
     public IActionResult Create()
     {
-        ViewBag.Roles = AllRoles;
+        ViewBag.Roles = GetAssignableRoles();
         return View(new UserFormViewModel());
     }
 
@@ -157,7 +178,18 @@ public class UsersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Store(UserFormViewModel model)
     {
-        ViewBag.Roles = AllRoles;
+        ViewBag.Roles = GetAssignableRoles();
+
+        var assignable = (string[])ViewBag.Roles;
+        if (!string.IsNullOrWhiteSpace(model.Role) && !assignable.Contains(model.Role))
+            ModelState.AddModelError(nameof(model.Role), "Invalid role.");
+
+        if (string.Equals(model.Role, "superadmin", StringComparison.OrdinalIgnoreCase))
+        {
+            var superAdminEmail = _configuration["Seed:SuperAdminEmail"];
+            if (!User.IsInRole("superadmin") || !string.Equals(model.Email, superAdminEmail, StringComparison.OrdinalIgnoreCase))
+                ModelState.AddModelError(nameof(model.Role), "Superadmin role is restricted.");
+        }
 
         if (string.IsNullOrWhiteSpace(model.Password))
             ModelState.AddModelError(nameof(model.Password), "Password is required.");
@@ -262,6 +294,23 @@ public class UsersController : Controller
         await _userManager.UpdateAsync(user);
 
         // Update role
+        var assignable = GetAssignableRoles();
+        if (!string.IsNullOrWhiteSpace(model.Role) && !assignable.Contains(model.Role))
+        {
+            TempData["Error"] = "Invalid role.";
+            return Redirect($"/users/{id}/edit");
+        }
+
+        if (string.Equals(model.Role, "superadmin", StringComparison.OrdinalIgnoreCase))
+        {
+            var superAdminEmail = _configuration["Seed:SuperAdminEmail"];
+            if (!User.IsInRole("superadmin") || !string.Equals(model.Email, superAdminEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "Superadmin role is restricted.";
+                return Redirect($"/users/{id}/edit");
+            }
+        }
+
         var currentRoles = await _userManager.GetRolesAsync(user);
         await _userManager.RemoveFromRolesAsync(user, currentRoles);
         if (!string.IsNullOrWhiteSpace(model.Role))

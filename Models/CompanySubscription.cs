@@ -4,8 +4,14 @@ namespace PmesCSharp.Models;
 
 public enum SubscriptionPlan
 {
-    Standard = 1,
+    Free = 1,
     Pro = 2,
+}
+
+public enum SubscriptionBillingCycle
+{
+    Monthly = 1,
+    Annual = 2,
 }
 
 public enum SubscriptionStatus
@@ -25,7 +31,10 @@ public class CompanySubscription
     public Company? Company { get; set; }
 
     [Required]
-    public SubscriptionPlan Plan { get; set; } = SubscriptionPlan.Standard;
+    public SubscriptionPlan Plan { get; set; } = SubscriptionPlan.Free;
+
+    [Required]
+    public SubscriptionBillingCycle BillingCycle { get; set; } = SubscriptionBillingCycle.Monthly;
 
     [Required]
     public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Trialing;

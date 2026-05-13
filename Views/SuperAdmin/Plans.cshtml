@@ -1,0 +1,55 @@
+@model List<PmesCSharp.Models.SubscriptionPlanDefinition>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Plans";
+}
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@ok</div>
+}
+
+<div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Plan Management</h2>
+            <p class="text-sm text-gray-500 mt-1">Only Free and Pro plans are supported.</p>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-separate border-spacing-y-3">
+            <thead>
+            <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                <th class="px-6 py-4">Plan</th>
+                <th class="px-6 py-4">Monthly</th>
+                <th class="px-6 py-4">Annual</th>
+                <th class="px-6 py-4">Max Users</th>
+                <th class="px-6 py-4">Max Products</th>
+                <th class="px-6 py-4">Max Materials</th>
+                <th class="px-6 py-4 text-right">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model)
+            {
+                <tr class="bg-white/[0.02] border border-white/[0.05]">
+                    <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05] text-white font-bold">@p.Plan</td>
+                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">₱@((p.MonthlyPriceCentavos) / 100)</td>
+                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">₱@((p.AnnualPriceCentavos) / 100)</td>
+                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">@(p.MaxUsers == 0 ? "Unlimited" : p.MaxUsers.ToString("N0"))</td>
+                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">@(p.MaxProducts == 0 ? "Unlimited" : p.MaxProducts.ToString("N0"))</td>
+                    <td class="px-6 py-5 border-y border-white/[0.05] text-gray-300">@(p.MaxMaterials == 0 ? "Unlimited" : p.MaxMaterials.ToString("N0"))</td>
+                    <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
+                        <a href="/superadmin/plans/@p.Plan" class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 text-white transition-all">Edit</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6 text-sm text-gray-500">
+        If a plan row is missing, open Edit once to create it.
+    </div>
+</div>

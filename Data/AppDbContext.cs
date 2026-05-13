@@ -23,6 +23,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<CompanySubscription> CompanySubscriptions => Set<CompanySubscription>();
 
+    public DbSet<SubscriptionPlanDefinition> SubscriptionPlanDefinitions => Set<SubscriptionPlanDefinition>();
+
+    public DbSet<SubscriptionGlobalSetting> SubscriptionGlobalSettings => Set<SubscriptionGlobalSetting>();
+
     public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
 
     public DbSet<UserSetting> UserSettings => Set<UserSetting>();
@@ -161,6 +165,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.HasIndex(s => s.CompanyId).IsUnique();
             e.HasOne(s => s.Company).WithMany().HasForeignKey(s => s.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SubscriptionPlanDefinition>(e =>
+        {
+            e.HasIndex(p => p.Plan).IsUnique();
+        });
+
+        modelBuilder.Entity<SubscriptionGlobalSetting>(e =>
+        {
+            // Single-row table (enforced in code)
         });
 
         modelBuilder.Entity<CompanyProfile>(e =>

@@ -12,11 +12,13 @@ public class ProductionSchedulesController : Controller
 {
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly PmesCSharp.Services.EntitlementService _entitlements;
 
-    public ProductionSchedulesController(AppDbContext db, UserManager<ApplicationUser> userManager)
+    public ProductionSchedulesController(AppDbContext db, UserManager<ApplicationUser> userManager, PmesCSharp.Services.EntitlementService entitlements)
     {
         _db = db;
         _userManager = userManager;
+        _entitlements = entitlements;
     }
 
     [HttpGet("/production/schedules")]
@@ -120,6 +122,13 @@ public class ProductionSchedulesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateWorkOrders(int id)
     {
+        var canGenerate = await _entitlements.EnsureCanGenerateMoreWorkOrdersThisMonthAsync();
+        if (!canGenerate.Allowed)
+        {
+            TempData["Error"] = canGenerate.Message;
+            return Redirect($"/production/schedules/{id}");
+        }
+
         var schedule = await _db.ProductionSchedules.Include(s => s.WorkOrders).FirstOrDefaultAsync(s => s.Id == id);
         if (schedule is null) return NotFound();
 

@@ -13,6 +13,13 @@
     </div>
 }
 
+@if (TempData["Error"] is string error)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">
+        @error
+    </div>
+}
+
 <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
     <div class="flex items-center justify-between mb-10">
         <div>

@@ -1,0 +1,54 @@
+@model PmesCSharp.ViewModels.SuperAdmin.GlobalBillingSettingsViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Billing Settings";
+}
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@ok</div>
+}
+
+<div class="max-w-3xl space-y-6">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-white tracking-tight">Global Billing Settings</h2>
+                <p class="text-sm text-gray-500 mt-1">Optional PayMongo keys + trial/grace rules.</p>
+            </div>
+        </div>
+
+        <form method="post" class="space-y-6">
+            @Html.AntiForgeryToken()
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">PayMongo Public Key</label>
+                    <input asp-for="PayMongoPublicKey" class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm" />
+                    <div class="text-xs text-gray-600 mt-1">If empty, appsettings.json will be used.</div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">PayMongo Secret Key</label>
+                    <input asp-for="PayMongoSecretKey" class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm" />
+                    <div class="text-xs text-gray-600 mt-1">If empty, appsettings.json will be used.</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Trial Days</label>
+                    <input asp-for="TrialDays" type="number" class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Grace Period Days</label>
+                    <input asp-for="GracePeriodDays" type="number" class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm" />
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button type="submit" class="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all">Save</button>
+                <a href="/admin" class="px-6 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Back</a>
+            </div>
+        </form>
+    </div>
+</div>

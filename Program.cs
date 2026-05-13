@@ -28,6 +28,8 @@ builder.Services.AddScoped<PmesCSharp.Services.EmailService>();
 builder.Services.AddScoped<PmesCSharp.Services.IEmailSender, PmesCSharp.Services.SmtpEmailSender>();
 builder.Services.AddScoped<PmesCSharp.Services.IAuditLogger, PmesCSharp.Services.AuditLogger>();
 builder.Services.AddScoped<PmesCSharp.Services.IRecaptchaService, PmesCSharp.Services.RecaptchaService>();
+builder.Services.AddScoped<PmesCSharp.Services.SubscriptionSettingsService>();
+builder.Services.AddScoped<PmesCSharp.Services.EntitlementService>();
 builder.Services.AddHttpClient<PmesCSharp.Services.PayMongoService>();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

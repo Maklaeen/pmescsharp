@@ -1,0 +1,231 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PmesCSharp.Data;
+using PmesCSharp.Models;
+using PmesCSharp.Services;
+using PmesCSharp.ViewModels.SuperAdmin;
+
+namespace PmesCSharp.Controllers;
+
+[Authorize(Roles = "superadmin")]
+public class SuperAdminController : Controller
+{
+    private readonly AppDbContext _db;
+    private readonly IAuditLogger _audit;
+
+    public SuperAdminController(AppDbContext db, IAuditLogger audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
+
+    [HttpGet("/superadmin/plans")]
+    public async Task<IActionResult> Plans(CancellationToken ct)
+    {
+        var plans = await _db.SubscriptionPlanDefinitions
+            .AsNoTracking()
+            .OrderBy(p => p.Plan)
+            .ToListAsync(ct);
+
+        return View(plans);
+    }
+
+    [HttpGet("/superadmin/plans/{plan}")]
+    public async Task<IActionResult> EditPlan([FromRoute] SubscriptionPlan plan, CancellationToken ct)
+    {
+        var row = await _db.SubscriptionPlanDefinitions.FirstOrDefaultAsync(p => p.Plan == plan, ct);
+        row ??= new SubscriptionPlanDefinition { Plan = plan };
+
+        var vm = new PlanEditViewModel
+        {
+            Plan = row.Plan,
+            Currency = row.Currency,
+            MonthlyPriceCentavos = row.MonthlyPriceCentavos,
+            AnnualPriceCentavos = row.AnnualPriceCentavos,
+            MaxUsers = row.MaxUsers,
+            MaxProducts = row.MaxProducts,
+            MaxMaterials = row.MaxMaterials,
+            MaxWorkOrdersPerMonth = row.MaxWorkOrdersPerMonth,
+            MaxStorageMb = row.MaxStorageMb,
+            EnableReports = row.EnableReports,
+            EnableCosting = row.EnableCosting,
+            EnableAuditLogs = row.EnableAuditLogs,
+        };
+
+        return View(vm);
+    }
+
+    [HttpPost("/superadmin/plans/{plan}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdatePlan([FromRoute] SubscriptionPlan plan, PlanEditViewModel model, CancellationToken ct)
+    {
+        if (plan != model.Plan) return BadRequest();
+        if (!ModelState.IsValid) return View("EditPlan", model);
+
+        var row = await _db.SubscriptionPlanDefinitions.FirstOrDefaultAsync(p => p.Plan == plan, ct);
+        if (row is null)
+        {
+            row = new SubscriptionPlanDefinition { Plan = plan };
+            _db.SubscriptionPlanDefinitions.Add(row);
+        }
+
+        row.Currency = (model.Currency ?? "PHP").Trim().ToUpperInvariant();
+        row.MonthlyPriceCentavos = model.MonthlyPriceCentavos;
+        row.AnnualPriceCentavos = model.AnnualPriceCentavos;
+        row.MaxUsers = model.MaxUsers;
+        row.MaxProducts = model.MaxProducts;
+        row.MaxMaterials = model.MaxMaterials;
+        row.MaxWorkOrdersPerMonth = model.MaxWorkOrdersPerMonth;
+        row.MaxStorageMb = model.MaxStorageMb;
+        row.EnableReports = model.EnableReports;
+        row.EnableCosting = model.EnableCosting;
+        row.EnableAuditLogs = model.EnableAuditLogs;
+        row.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync("superadmin.plan.update", "SubscriptionPlanDefinition", row.Id.ToString(), $"Plan={row.Plan}", ct);
+
+        TempData["Success"] = "Plan updated.";
+        return Redirect("/superadmin/plans");
+    }
+
+    [HttpGet("/superadmin/billing-settings")]
+    public async Task<IActionResult> BillingSettings(CancellationToken ct)
+    {
+        var row = await _db.SubscriptionGlobalSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
+        row ??= new SubscriptionGlobalSetting();
+
+        var vm = new GlobalBillingSettingsViewModel
+        {
+            PayMongoPublicKey = row.PayMongoPublicKey,
+            PayMongoSecretKey = row.PayMongoSecretKey,
+            TrialDays = row.TrialDays,
+            GracePeriodDays = row.GracePeriodDays,
+        };
+
+        return View(vm);
+    }
+
+    [HttpPost("/superadmin/billing-settings")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateBillingSettings(GlobalBillingSettingsViewModel model, CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return View("BillingSettings", model);
+
+        var row = await _db.SubscriptionGlobalSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
+        if (row is null)
+        {
+            row = new SubscriptionGlobalSetting();
+            _db.SubscriptionGlobalSettings.Add(row);
+        }
+
+        row.PayMongoPublicKey = string.IsNullOrWhiteSpace(model.PayMongoPublicKey) ? null : model.PayMongoPublicKey.Trim();
+        row.PayMongoSecretKey = string.IsNullOrWhiteSpace(model.PayMongoSecretKey) ? null : model.PayMongoSecretKey.Trim();
+        row.TrialDays = model.TrialDays;
+        row.GracePeriodDays = model.GracePeriodDays;
+        row.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync("superadmin.billing.update", "SubscriptionGlobalSetting", row.Id.ToString(), "Updated global billing settings", ct);
+
+        TempData["Success"] = "Settings updated.";
+        return Redirect("/superadmin/billing-settings");
+    }
+
+    [HttpGet("/superadmin/subscriptions")]
+    public async Task<IActionResult> Subscriptions(CancellationToken ct)
+    {
+        var items = await _db.Companies
+            .AsNoTracking()
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.Code,
+                Subscription = _db.CompanySubscriptions.AsNoTracking().FirstOrDefault(s => s.CompanyId == c.Id)
+            })
+            .ToListAsync(ct);
+
+        return View(items);
+    }
+
+    [HttpGet("/superadmin/subscriptions/{companyId:int}")]
+    public async Task<IActionResult> EditSubscription([FromRoute] int companyId, CancellationToken ct)
+    {
+        var company = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == companyId, ct);
+        if (company is null) return NotFound();
+
+        var sub = await _db.CompanySubscriptions.FirstOrDefaultAsync(s => s.CompanyId == companyId, ct);
+
+        var vm = new CompanySubscriptionOverrideViewModel
+        {
+            CompanyId = companyId,
+            Plan = sub?.Plan ?? SubscriptionPlan.Free,
+            Status = sub?.Status ?? SubscriptionStatus.Active,
+            BillingCycle = sub?.BillingCycle ?? SubscriptionBillingCycle.Monthly,
+            TrialEndsAt = sub?.TrialEndsAt,
+            CurrentPeriodEndsAt = sub?.CurrentPeriodEndsAt,
+            BillingEmail = sub?.BillingEmail,
+        };
+
+        ViewBag.CompanyName = company.Name;
+        return View(vm);
+    }
+
+    [HttpPost("/superadmin/subscriptions/{companyId:int}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateSubscription([FromRoute] int companyId, CompanySubscriptionOverrideViewModel model, CancellationToken ct)
+    {
+        if (companyId != model.CompanyId) return BadRequest();
+        if (!ModelState.IsValid) return View("EditSubscription", model);
+
+        var company = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == companyId, ct);
+        if (company is null) return NotFound();
+
+        var sub = await _db.CompanySubscriptions.FirstOrDefaultAsync(s => s.CompanyId == companyId, ct);
+        if (sub is null)
+        {
+            sub = new CompanySubscription { CompanyId = companyId, CreatedAt = DateTime.UtcNow };
+            _db.CompanySubscriptions.Add(sub);
+        }
+
+        sub.Plan = model.Plan;
+        sub.Status = model.Status;
+        sub.BillingCycle = model.BillingCycle;
+        sub.TrialEndsAt = model.TrialEndsAt;
+        sub.CurrentPeriodEndsAt = model.CurrentPeriodEndsAt;
+        sub.BillingEmail = string.IsNullOrWhiteSpace(model.BillingEmail) ? null : model.BillingEmail.Trim();
+        sub.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync("superadmin.subscription.override", "CompanySubscription", sub.Id.ToString(), $"CompanyId={companyId}; Plan={sub.Plan}; Status={sub.Status}", ct);
+
+        TempData["Success"] = "Subscription updated.";
+        return Redirect("/superadmin/subscriptions");
+    }
+
+    [HttpPost("/superadmin/subscriptions/{companyId:int}/cancel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelSubscription([FromRoute] int companyId, CancellationToken ct)
+    {
+        var sub = await _db.CompanySubscriptions.FirstOrDefaultAsync(s => s.CompanyId == companyId, ct);
+        if (sub is null)
+        {
+            TempData["Success"] = "No subscription to cancel.";
+            return Redirect("/superadmin/subscriptions");
+        }
+
+        sub.Status = SubscriptionStatus.Canceled;
+        sub.Plan = SubscriptionPlan.Free;
+        sub.CurrentPeriodEndsAt = DateTime.UtcNow;
+        sub.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync("superadmin.subscription.cancel", "CompanySubscription", sub.Id.ToString(), $"CompanyId={companyId}", ct);
+
+        TempData["Success"] = "Subscription canceled and downgraded to Free.";
+        return Redirect("/superadmin/subscriptions");
+    }
+}

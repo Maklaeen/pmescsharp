@@ -35,6 +35,19 @@ public static class IdentitySeed
             return;
         }
 
+        // Enforce single superadmin: remove the role from anyone else.
+        var existingSuperAdmins = await userManager.GetUsersInRoleAsync("superadmin");
+        foreach (var u in existingSuperAdmins)
+        {
+            if (!string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase))
+            {
+                await userManager.RemoveFromRoleAsync(u, "superadmin");
+                // Keep them as admin (default) so they still have access.
+                if (!await userManager.IsInRoleAsync(u, "admin"))
+                    await userManager.AddToRoleAsync(u, "admin");
+            }
+        }
+
         // Remove legacy superadmin if exists
         var legacy = await userManager.FindByEmailAsync("admin@pmes.com");
         if (legacy is not null)
@@ -60,6 +73,11 @@ public static class IdentitySeed
             {
                 await userManager.AddToRoleAsync(user, "superadmin");
             }
+        }
+        else
+        {
+            if (!await userManager.IsInRoleAsync(existing, "superadmin"))
+                await userManager.AddToRoleAsync(existing, "superadmin");
         }
     }
 }

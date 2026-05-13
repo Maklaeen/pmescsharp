@@ -11,8 +11,13 @@ namespace PmesCSharp.Controllers;
 public class MaterialsController : Controller
 {
     private readonly AppDbContext _db;
+    private readonly PmesCSharp.Services.EntitlementService _entitlements;
 
-    public MaterialsController(AppDbContext db) => _db = db;
+    public MaterialsController(AppDbContext db, PmesCSharp.Services.EntitlementService entitlements)
+    {
+        _db = db;
+        _entitlements = entitlements;
+    }
 
     [HttpGet("/admin/materials")]
     public async Task<IActionResult> Index([FromQuery] int page = 1)
@@ -38,6 +43,13 @@ public class MaterialsController : Controller
     public async Task<IActionResult> Store(MaterialFormViewModel model)
     {
         if (!ModelState.IsValid) return View("Create", model);
+
+        var canCreate = await _entitlements.EnsureCanCreateMaterialAsync();
+        if (!canCreate.Allowed)
+        {
+            TempData["Error"] = canCreate.Message;
+            return Redirect("/admin/materials");
+        }
 
         var existing = await _db.Materials.AnyAsync(m => m.MaterialCode == model.MaterialCode);
         if (existing)

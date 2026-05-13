@@ -17,8 +17,9 @@ public class SubscriptionController : Controller
     private readonly IAuditLogger _audit;
     private readonly IConfiguration _config;
     private readonly PayMongoService _payMongo;
+    private readonly PmesCSharp.Services.SubscriptionSettingsService _settings;
 
-    public SubscriptionController(AppDbContext db, ICurrentCompany currentCompany, UserManager<ApplicationUser> userManager, IAuditLogger audit, IConfiguration config, PayMongoService payMongo)
+    public SubscriptionController(AppDbContext db, ICurrentCompany currentCompany, UserManager<ApplicationUser> userManager, IAuditLogger audit, IConfiguration config, PayMongoService payMongo, PmesCSharp.Services.SubscriptionSettingsService settings)
     {
         _db = db;
         _currentCompany = currentCompany;
@@ -26,6 +27,7 @@ public class SubscriptionController : Controller
         _audit = audit;
         _config = config;
         _payMongo = payMongo;
+        _settings = settings;
     }
 
     [HttpGet("/subscription")]
@@ -53,31 +55,51 @@ public class SubscriptionController : Controller
 
         var user = await _userManager.GetUserAsync(User);
         ViewBag.BillingEmail = user?.Email ?? "";
-        ViewBag.PublicKey = _config["PayMongo:PublicKey"] ?? "";
+
+        var global = await _settings.GetAsync(ct);
+        ViewBag.PublicKey = (global.PayMongoPublicKey ?? "").Trim();
+        if (string.IsNullOrWhiteSpace((string)ViewBag.PublicKey))
+            ViewBag.PublicKey = _config["PayMongo:PublicKey"] ?? "";
+
+        ViewBag.PlanFree = await _settings.GetPlanAsync(SubscriptionPlan.Free, ct);
+        ViewBag.PlanPro = await _settings.GetPlanAsync(SubscriptionPlan.Pro, ct);
+        ViewBag.TrialDays = global.TrialDays;
         return View();
     }
 
     [HttpPost("/subscription/checkout")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Checkout([FromForm] string plan, [FromForm] string billingEmail, CancellationToken ct)
+    public async Task<IActionResult> Checkout([FromForm] string plan, [FromForm] string billingEmail, [FromForm] string? cycle, CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
         if (companyId <= 0) return Forbid();
 
-        var planEnum = plan == "Pro" ? SubscriptionPlan.Pro : SubscriptionPlan.Standard;
-        var amountCentavos = planEnum == SubscriptionPlan.Pro ? 4900_00L : 2900_00L; // PHP centavos
-        var description = $"PMES {planEnum} Plan - Monthly";
+        var planEnum = string.Equals(plan, "Pro", StringComparison.OrdinalIgnoreCase) ? SubscriptionPlan.Pro : SubscriptionPlan.Free;
+        var billingCycle = string.Equals(cycle, "Annual", StringComparison.OrdinalIgnoreCase)
+            ? SubscriptionBillingCycle.Annual
+            : SubscriptionBillingCycle.Monthly;
+
+        if (planEnum == SubscriptionPlan.Free)
+        {
+            TempData["Success"] = "You're on the Free plan.";
+            return Redirect("/subscription/start-free?billingEmail=" + Uri.EscapeDataString(billingEmail ?? ""));
+        }
+
+        var planDef = await _settings.GetPlanAsync(planEnum, ct);
+        var amountCentavos = billingCycle == SubscriptionBillingCycle.Annual ? planDef.AnnualPriceCentavos : planDef.MonthlyPriceCentavos;
+        var description = $"PMES {planEnum} Plan - {billingCycle}";
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var cancelUrl = $"{baseUrl}/subscription/setup";
-        var successUrl = $"{baseUrl}/subscription/waiting?plan={plan}&email={Uri.EscapeDataString(billingEmail)}";
+        var successUrl = $"{baseUrl}/subscription/waiting?plan={planEnum}&cycle={billingCycle}&email={Uri.EscapeDataString(billingEmail)}";
 
         try
         {
             var link = await _payMongo.CreatePaymentLinkAsync(description, amountCentavos, successUrl, cancelUrl, ct);
 
             HttpContext.Session.SetString("paymongo_link_id", link.LinkId);
-            HttpContext.Session.SetString("paymongo_plan", plan);
+            HttpContext.Session.SetString("paymongo_plan", planEnum.ToString());
+            HttpContext.Session.SetString("paymongo_cycle", billingCycle.ToString());
             HttpContext.Session.SetString("paymongo_email", billingEmail);
             return Redirect(link.CheckoutUrl);
         }
@@ -89,11 +111,12 @@ public class SubscriptionController : Controller
     }
 
     [HttpGet("/subscription/waiting")]
-    public IActionResult Waiting([FromQuery] string plan, [FromQuery] string email)
+    public IActionResult Waiting([FromQuery] string plan, [FromQuery] string? cycle, [FromQuery] string email)
     {
         var linkId = HttpContext.Session.GetString("paymongo_link_id") ?? "";
         ViewBag.LinkId = linkId;
         ViewBag.Plan = plan;
+        ViewBag.Cycle = cycle ?? "";
         ViewBag.Email = email;
         return View();
     }
@@ -113,7 +136,7 @@ public class SubscriptionController : Controller
     }
 
     [HttpGet("/subscription/success")]
-    public async Task<IActionResult> Success([FromQuery] string plan, [FromQuery] string email, CancellationToken ct)
+    public async Task<IActionResult> Success([FromQuery] string plan, [FromQuery] string? cycle, [FromQuery] string email, CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
         if (companyId <= 0) return Forbid();
@@ -137,15 +160,21 @@ public class SubscriptionController : Controller
         var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, ct);
         if (!existing)
         {
-            var planEnum = plan == "Pro" ? SubscriptionPlan.Pro : SubscriptionPlan.Standard;
+            var planEnum = string.Equals(plan, "Pro", StringComparison.OrdinalIgnoreCase) ? SubscriptionPlan.Pro : SubscriptionPlan.Free;
+            var billingCycle = string.Equals(cycle, "Annual", StringComparison.OrdinalIgnoreCase)
+                ? SubscriptionBillingCycle.Annual
+                : SubscriptionBillingCycle.Monthly;
+
+            var global = await _settings.GetAsync(ct);
             var now = DateTime.UtcNow;
             var sub = new CompanySubscription
             {
                 CompanyId = companyId,
                 Plan = planEnum,
+                BillingCycle = billingCycle,
                 Status = SubscriptionStatus.Active,
-                TrialEndsAt = now.AddDays(30),
-                CurrentPeriodEndsAt = now.AddMonths(1),
+                TrialEndsAt = now.AddDays(global.TrialDays),
+                CurrentPeriodEndsAt = billingCycle == SubscriptionBillingCycle.Annual ? now.AddYears(1) : now.AddMonths(1),
                 BillingEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -157,9 +186,10 @@ public class SubscriptionController : Controller
 
         HttpContext.Session.Remove("paymongo_link_id");
         HttpContext.Session.Remove("paymongo_plan");
+        HttpContext.Session.Remove("paymongo_cycle");
         HttpContext.Session.Remove("paymongo_email");
 
-        TempData["Success"] = $"🎉 You're now on the {plan} plan!";
+        TempData["Success"] = $"You're now on the {plan} plan!";
         return Redirect("/admin/dashboard");
     }
 
@@ -174,23 +204,55 @@ public class SubscriptionController : Controller
         if (existing) return Redirect("/subscription");
 
         var user = await _userManager.GetUserAsync(User);
+        var global = await _settings.GetAsync(ct);
         var now = DateTime.UtcNow;
         var sub = new CompanySubscription
         {
             CompanyId = companyId,
-            Plan = SubscriptionPlan.Standard,
+            Plan = SubscriptionPlan.Free,
             Status = SubscriptionStatus.Trialing,
-            TrialEndsAt = now.AddDays(30),
-            CurrentPeriodEndsAt = now.AddDays(30),
+            TrialEndsAt = now.AddDays(global.TrialDays),
+            CurrentPeriodEndsAt = now.AddDays(global.TrialDays),
             BillingEmail = user?.Email,
             CreatedAt = now,
             UpdatedAt = now,
         };
         _db.Add(sub);
         await _db.SaveChangesAsync(ct);
-        await _audit.LogAsync("subscription.trial", "CompanySubscription", sub.Id.ToString(), "Started 30-day trial", ct);
+        await _audit.LogAsync("subscription.trial", "CompanySubscription", sub.Id.ToString(), $"Started {global.TrialDays}-day trial", ct);
 
-        TempData["Success"] = "30-day free trial started!";
+        TempData["Success"] = $"{global.TrialDays}-day free trial started!";
+        return Redirect("/admin/dashboard");
+    }
+
+    [HttpGet("/subscription/start-free")]
+    public async Task<IActionResult> StartFree([FromQuery] string? billingEmail, CancellationToken ct)
+    {
+        var companyId = _currentCompany.CompanyId;
+        if (companyId <= 0) return Forbid();
+
+        var existing = await _db.Set<CompanySubscription>().FirstOrDefaultAsync(s => s.CompanyId == companyId, ct);
+        if (existing is null)
+        {
+            var now = DateTime.UtcNow;
+            var sub = new CompanySubscription
+            {
+                CompanyId = companyId,
+                Plan = SubscriptionPlan.Free,
+                BillingCycle = SubscriptionBillingCycle.Monthly,
+                Status = SubscriptionStatus.Active,
+                TrialEndsAt = null,
+                CurrentPeriodEndsAt = null,
+                BillingEmail = string.IsNullOrWhiteSpace(billingEmail) ? null : billingEmail.Trim(),
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            _db.Add(sub);
+            await _db.SaveChangesAsync(ct);
+            await _audit.LogAsync("subscription.free", "CompanySubscription", sub.Id.ToString(), "Activated Free plan", ct);
+        }
+
+        TempData["Success"] = "Free plan activated.";
         return Redirect("/admin/dashboard");
     }
 }
