@@ -19,23 +19,17 @@ jobs:
       - name: Publish
         run: dotnet publish PmesCSharp.csproj -c Release -o ./publish
 
-      - name: Put app offline
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: site66006.siteasp.net
-          username: site66006
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./publish/
-          server-dir: wwwroot/
-          dangerous-clean-slate: false
-          exclude: |
-            **
-            !app_offline.htm
+      - name: Create app_offline.htm
+        run: echo "<h1>Updating...</h1>" > ./publish/app_offline.htm
+
+      - name: Upload app_offline.htm to stop app
+        run: |
+          curl --ftp-create-dirs -T ./publish/app_offline.htm "ftp://site66006.siteasp.net/wwwroot/app_offline.htm" --user "site66006:${{ secrets.FTP_PASSWORD }}"
 
       - name: Wait for app to stop
-        run: Start-Sleep -Seconds 15
+        run: Start-Sleep -Seconds 20
 
-      - name: Deploy files
+      - name: Deploy all files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: site66006.siteasp.net
@@ -50,3 +44,7 @@ jobs:
             **/appsettings.json
             **/appsettings.Production.json
             **/app_offline.htm
+
+      - name: Remove app_offline.htm to bring app back online
+        run: |
+          curl -Q "DELE wwwroot/app_offline.htm" "ftp://site66006.siteasp.net/" --user "site66006:${{ secrets.FTP_PASSWORD }}"
