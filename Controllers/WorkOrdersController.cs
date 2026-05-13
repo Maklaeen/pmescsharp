@@ -7,7 +7,7 @@ using PmesCSharp.Models;
 
 namespace PmesCSharp.Controllers;
 
-[Authorize(Roles = "superadmin,admin,planner,operator")]
+[Authorize(Roles = "superadmin,admin,planner,operator,qc")]
 public class WorkOrdersController : Controller
 {
     private readonly AppDbContext _db;
