@@ -1,56 +1,105 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Planner Dashboard";
+    var totalSchedules = (int)(ViewBag.TotalSchedules ?? 0);
+    var inProgress = (int)(ViewBag.InProgress ?? 0);
+    var completed = (int)(ViewBag.Completed ?? 0);
+    var planned = (int)(ViewBag.Planned ?? 0);
+    var recentSchedules = ViewBag.RecentSchedules as IEnumerable<PmesCSharp.Models.ProductionSchedule> ?? [];
 }
 
 <div class="space-y-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        @foreach (var card in new[]
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        @foreach (var stat in new[]
         {
-            new { Title = "Production Schedules", Desc = "Create and manage production batches.", Href = "/production/schedules", Icon = "M4 6h16M4 12h16m-7 6h7", Color = "text-orange-400", Bg = "bg-orange-500/10", Border = "border-orange-500/20", Primary = true },
-            new { Title = "Progress Dashboard", Desc = "Monitor in-progress schedules and work order completion.", Href = "/production/dashboard", Icon = "M3 3v18h18M7 14l3-3 3 3 6-6", Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20", Primary = false },
-            new { Title = "Work Orders", Desc = "Assign operators and track process steps.", Href = "/production/work-orders", Icon = "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", Color = "text-emerald-400", Bg = "bg-emerald-500/10", Border = "border-emerald-500/20", Primary = false },
+            new { Label = "Total Schedules", Value = totalSchedules.ToString(), Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20" },
+            new { Label = "Planned", Value = planned.ToString(), Color = "text-gray-400", Bg = "bg-gray-500/10", Border = "border-gray-500/20" },
+            new { Label = "In Progress", Value = inProgress.ToString(), Color = "text-yellow-400", Bg = "bg-yellow-500/10", Border = "border-yellow-500/20" },
+            new { Label = "Completed", Value = completed.ToString(), Color = "text-emerald-400", Bg = "bg-emerald-500/10", Border = "border-emerald-500/20" },
         })
         {
-            <a href="@card.Href"
-               class="group bg-[#111114] border border-white/[0.05] rounded-[24px] p-7 hover:border-orange-500/20 hover:bg-[#16161a] transition-all duration-300 block">
-                <div class="w-12 h-12 @card.Bg border @card.Border rounded-2xl flex items-center justify-center @card.Color mb-5 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="@card.Icon"/>
-                    </svg>
+            <div class="bg-[#111114] border border-white/[0.05] rounded-[20px] p-5">
+                <div class="text-2xl font-black text-white">@stat.Value</div>
+                <div class="text-xs text-gray-500 mt-0.5">@stat.Label</div>
+                <div class="mt-3 h-1 rounded-full @stat.Bg overflow-hidden">
+                    <div class="h-full @stat.Bg rounded-full" style="width:100%"></div>
                 </div>
-                <h3 class="font-bold text-white text-lg mb-1">@card.Title</h3>
-                <p class="text-gray-500 text-sm leading-relaxed">@card.Desc</p>
-                <div class="mt-5 flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    Open <svg class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-                </div>
-            </a>
+            </div>
         }
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-1 h-6 bg-orange-500 rounded-full"></div>
-                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">Costing</h2>
+    <!-- Schedule Progress Chart -->
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Overview</div>
+                <h3 class="text-base font-bold text-white mt-1">Recent Production Schedules</h3>
             </div>
-            <p class="text-gray-400 text-sm mb-6">Compute material costs from BOM and add optional labor cost per schedule.</p>
-            <a href="/costing" class="inline-flex items-center gap-2 px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">
-                Open Costing
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+            <a href="/production/schedules/create"
+               class="px-4 py-2 text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all">
+                + New Schedule
             </a>
         </div>
 
-        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-1 h-6 bg-orange-500 rounded-full"></div>
-                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">Quick Tips</h2>
+        @if (!recentSchedules.Any())
+        {
+            <div class="text-center py-10 text-gray-600 text-sm">No schedules yet. Create your first production schedule.</div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var s in recentSchedules)
+                {
+                    var doneWOs = s.WorkOrders.Count(w => w.Status == "done");
+                    var totalWOs = s.WorkOrders.Count;
+                    var pct = totalWOs > 0 ? (int)((double)doneWOs / totalWOs * 100) : 0;
+                    var statusColor = s.Status switch {
+                        "completed" => "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+                        "in_progress" => "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
+                        "cancelled" => "text-red-400 bg-red-500/10 border-red-500/20",
+                        _ => "text-gray-400 bg-gray-500/10 border-gray-500/20"
+                    };
+                    <a href="/production/schedules/@s.Id"
+                       class="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="text-sm font-bold text-white truncate">@s.Product?.ProductName</span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border @statusColor">@s.Status.Replace("_", " ")</span>
+                            </div>
+                            <div class="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
+                                <div class="h-full rounded-full bg-gradient-to-r from-orange-500 to-orange-400" style="width:@pct%"></div>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <div class="text-sm font-bold text-white">@pct%</div>
+                            <div class="text-[10px] text-gray-500">@doneWOs/@totalWOs WOs</div>
+                        </div>
+                    </a>
+                }
             </div>
-            <ul class="space-y-3 text-sm text-gray-400">
-                <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Create a schedule first, then generate work orders.</li>
-                <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> MRP is auto-computed from BOM × planned quantity.</li>
-                <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Costing is available after schedule is started.</li>
-            </ul>
-        </div>
+        }
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        @foreach (var card in new[]
+        {
+            new { Title = "Production Schedules", Href = "/production/schedules", Icon = "M4 6h16M4 12h16m-7 6h7", Color = "text-orange-400", Bg = "bg-orange-500/10", Border = "border-orange-500/20" },
+            new { Title = "Work Orders", Href = "/production/work-orders", Icon = "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20" },
+            new { Title = "Production Costing", Href = "/costing", Icon = "M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z", Color = "text-emerald-400", Bg = "bg-emerald-500/10", Border = "border-emerald-500/20" },
+        })
+        {
+            <a href="@card.Href"
+               class="group bg-[#111114] border border-white/[0.05] rounded-[20px] p-6 hover:border-orange-500/20 hover:bg-[#16161a] transition-all flex items-center gap-4">
+                <div class="w-10 h-10 @card.Bg border @card.Border rounded-xl flex items-center justify-center @card.Color group-hover:scale-110 transition-transform flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="@card.Icon"/>
+                    </svg>
+                </div>
+                <span class="text-sm font-bold text-white">@card.Title</span>
+            </a>
+        }
     </div>
 </div>

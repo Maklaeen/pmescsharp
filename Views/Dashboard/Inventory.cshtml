@@ -1,41 +1,120 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Inventory Dashboard";
+    var totalMaterials = (int)(ViewBag.TotalMaterials ?? 0);
+    var totalMovements = (int)(ViewBag.TotalMovements ?? 0);
+    var stockIn = (int)(ViewBag.StockIn ?? 0);
+    var stockOut = (int)(ViewBag.StockOut ?? 0);
+    var lowStock = (int)(ViewBag.LowStock ?? 0);
+    var recentMovements = ViewBag.RecentMovements as IEnumerable<PmesCSharp.Models.MaterialMovement> ?? [];
 }
 
 <div class="space-y-6">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        @foreach (var card in new[]
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        @foreach (var stat in new[]
         {
-            new { Title = "Material Movements", Desc = "Record stock-in, stock-out, and adjustments with full traceability.", Href = "/inventory/material-movements", Icon = "M3 7h18M3 12h18M3 17h18", Color = "text-orange-400", Bg = "bg-orange-500/10", Border = "border-orange-500/20" },
-            new { Title = "Production Schedules", Desc = "Check MRP — required vs available materials per schedule.", Href = "/production/schedules", Icon = "M4 6h16M4 12h16m-7 6h7", Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20" },
+            new { Label = "Total Materials", Value = totalMaterials.ToString(), Color = "text-blue-400", Bg = "bg-blue-500/10" },
+            new { Label = "Total Movements", Value = totalMovements.ToString(), Color = "text-purple-400", Bg = "bg-purple-500/10" },
+            new { Label = "Stock In", Value = stockIn.ToString(), Color = "text-emerald-400", Bg = "bg-emerald-500/10" },
+            new { Label = "Stock Out", Value = stockOut.ToString(), Color = "text-orange-400", Bg = "bg-orange-500/10" },
+            new { Label = "Low Stock", Value = lowStock.ToString(), Color = lowStock > 0 ? "text-red-400" : "text-gray-400", Bg = lowStock > 0 ? "bg-red-500/10" : "bg-gray-500/10" },
         })
         {
-            <a href="@card.Href"
-               class="group bg-[#111114] border border-white/[0.05] rounded-[24px] p-7 hover:border-orange-500/20 hover:bg-[#16161a] transition-all duration-300 block">
-                <div class="w-12 h-12 @card.Bg border @card.Border rounded-2xl flex items-center justify-center @card.Color mb-5 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="@card.Icon"/>
-                    </svg>
-                </div>
-                <h3 class="font-bold text-white text-lg mb-1">@card.Title</h3>
-                <p class="text-gray-500 text-sm leading-relaxed">@card.Desc</p>
-                <div class="mt-5 flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    Open <svg class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-                </div>
-            </a>
+            <div class="bg-[#111114] border border-white/[0.05] rounded-[20px] p-5">
+                <div class="text-2xl font-black text-white">@stat.Value</div>
+                <div class="text-xs text-gray-500 mt-0.5">@stat.Label</div>
+            </div>
         }
     </div>
 
+    <!-- Stock In vs Out Bar -->
     <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <div class="flex items-center gap-3 mb-6">
-            <div class="w-1 h-6 bg-orange-500 rounded-full"></div>
-            <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">Quick Tips</h2>
+        <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-2">Movement Summary</div>
+        <h3 class="text-base font-bold text-white mb-6">Stock In vs Stock Out</h3>
+        @{
+            var maxVal = Math.Max(stockIn, stockOut);
+            var inPct = maxVal > 0 ? (int)((double)stockIn / maxVal * 100) : 0;
+            var outPct = maxVal > 0 ? (int)((double)stockOut / maxVal * 100) : 0;
+        }
+        <div class="space-y-4">
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-sm text-gray-400 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Stock In
+                    </span>
+                    <span class="text-sm font-bold text-white">@stockIn</span>
+                </div>
+                <div class="h-3 rounded-full bg-white/[0.05] overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400" style="width:@inPct%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-sm text-gray-400 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span> Stock Out
+                    </span>
+                    <span class="text-sm font-bold text-white">@stockOut</span>
+                </div>
+                <div class="h-3 rounded-full bg-white/[0.05] overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-orange-500 to-orange-400" style="width:@outPct%"></div>
+                </div>
+            </div>
         </div>
-        <ul class="space-y-3 text-sm text-gray-400">
-            <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Use Material Movements to record stock-in when new materials arrive.</li>
-            <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Check MRP on each schedule to detect material shortages before production starts.</li>
-            <li class="flex items-start gap-2"><span class="text-orange-400 mt-0.5">→</span> Stock is auto-deducted when operators record material usage on work orders.</li>
-        </ul>
+    </div>
+
+    <!-- Recent Movements -->
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-base font-bold text-white">Recent Movements</h3>
+            <a href="/inventory/material-movements" class="text-xs font-bold text-orange-400 hover:text-orange-300">View All →</a>
+        </div>
+        @if (!recentMovements.Any())
+        {
+            <div class="text-center py-8 text-gray-600 text-sm">No movements recorded yet.</div>
+        }
+        else
+        {
+            <div class="space-y-2">
+                @foreach (var m in recentMovements)
+                {
+                    var isIn = m.MovementType == "in";
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-lg flex items-center justify-center @(isIn ? "bg-emerald-500/10 text-emerald-400" : "bg-orange-500/10 text-orange-400")">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="@(isIn ? "M19 14l-7 7m0 0l-7-7m7 7V3" : "M5 10l7-7m0 0l7 7m-7-7v18")"/>
+                                </svg>
+                            </div>
+                            <span class="text-sm text-white font-medium">@(m.Material?.MaterialName ?? "—")</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-bold @(isIn ? "text-emerald-400" : "text-orange-400")">
+                                @(isIn ? "+" : "-")@m.Quantity @m.Unit
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a href="/inventory/material-movements"
+           class="group bg-[#111114] border border-white/[0.05] rounded-[20px] p-6 hover:border-orange-500/20 hover:bg-[#16161a] transition-all flex items-center gap-4">
+            <div class="w-10 h-10 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center text-orange-400 group-hover:scale-110 transition-transform flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18"/></svg>
+            </div>
+            <span class="text-sm font-bold text-white">Material Movements</span>
+        </a>
+        <a href="/production/schedules"
+           class="group bg-[#111114] border border-white/[0.05] rounded-[20px] p-6 hover:border-orange-500/20 hover:bg-[#16161a] transition-all flex items-center gap-4">
+            <div class="w-10 h-10 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16m-7 6h7"/></svg>
+            </div>
+            <span class="text-sm font-bold text-white">Check MRP (Schedules)</span>
+        </a>
     </div>
 </div>

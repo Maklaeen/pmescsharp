@@ -1,0 +1,118 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Superadmin Dashboard";
+    var companiesCount = (int)(ViewBag.CompaniesCount ?? 0);
+    var usersCount = (int)(ViewBag.UsersCount ?? 0);
+    var schedulesCompleted = (int)(ViewBag.SchedulesCompleted ?? 0);
+    var schedulesInProgress = (int)(ViewBag.SchedulesInProgress ?? 0);
+    var proSubs = (int)(ViewBag.ProSubs ?? 0);
+    var companyStats = ViewBag.CompanyStats as IEnumerable<dynamic> ?? [];
+}
+
+<div class="space-y-6">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        @foreach (var stat in new[]
+        {
+            new { Label = "Companies", Value = companiesCount.ToString(), Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20", Icon = "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
+            new { Label = "Total Users", Value = usersCount.ToString(), Color = "text-purple-400", Bg = "bg-purple-500/10", Border = "border-purple-500/20", Icon = "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+            new { Label = "Pro Subscriptions", Value = proSubs.ToString(), Color = "text-orange-400", Bg = "bg-orange-500/10", Border = "border-orange-500/20", Icon = "M13 10V3L4 14h7v7l9-11h-7z" },
+            new { Label = "Schedules In Progress", Value = schedulesInProgress.ToString(), Color = "text-yellow-400", Bg = "bg-yellow-500/10", Border = "border-yellow-500/20", Icon = "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+            new { Label = "Completed Schedules", Value = schedulesCompleted.ToString(), Color = "text-emerald-400", Bg = "bg-emerald-500/10", Border = "border-emerald-500/20", Icon = "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+        })
+        {
+            <div class="bg-[#111114] border border-white/[0.05] rounded-[20px] p-5">
+                <div class="w-9 h-9 @stat.Bg border @stat.Border rounded-xl flex items-center justify-center @stat.Color mb-3">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="@stat.Icon"/>
+                    </svg>
+                </div>
+                <div class="text-2xl font-black text-white">@stat.Value</div>
+                <div class="text-xs text-gray-500 mt-0.5">@stat.Label</div>
+            </div>
+        }
+    </div>
+
+    <!-- Company Performance Chart -->
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">System Overview</div>
+                <h3 class="text-base font-bold text-white mt-1">Production Performance per Company</h3>
+            </div>
+            <a href="/superadmin/subscriptions" class="text-xs font-bold text-orange-400 hover:text-orange-300 transition-colors">
+                Manage Subscriptions →
+            </a>
+        </div>
+
+        @if (!companyStats.Any())
+        {
+            <div class="text-center py-12 text-gray-600 text-sm">No companies registered yet.</div>
+        }
+        else
+        {
+            <div class="space-y-4">
+                @foreach (var c in companyStats)
+                {
+                    var total = (int)c.Completed + (int)c.InProgress;
+                    var pct = total > 0 ? (int)((double)(int)c.Completed / total * 100) : 0;
+                    <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 bg-orange-500/10 border border-orange-500/20 rounded-lg flex items-center justify-center">
+                                    <span class="text-[10px] font-black text-orange-400">@(((string)c.Name).Substring(0, Math.Min(2, ((string)c.Name).Length)).ToUpperInvariant())</span>
+                                </div>
+                                <span class="text-sm font-bold text-white">@c.Name</span>
+                            </div>
+                            <div class="flex items-center gap-4 text-xs text-gray-500">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                                    @c.Completed completed
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span>
+                                    @c.InProgress in progress
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>
+                                    @c.QcPassed QC passed
+                                </span>
+                            </div>
+                        </div>
+                        <div class="h-2 rounded-full bg-white/[0.05] overflow-hidden">
+                            @if (total > 0)
+                            {
+                                <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                                     style="width: @pct%"></div>
+                            }
+                        </div>
+                        <div class="text-[10px] text-gray-600 mt-1.5">@pct% completion rate</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Quick Links -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        @foreach (var link in new[]
+        {
+            new { Title = "Plan Management", Desc = "Edit Free & Pro plan pricing and limits.", Href = "/superadmin/plans", Icon = "M13 10V3L4 14h7v7l9-11h-7z", Color = "text-orange-400", Bg = "bg-orange-500/10", Border = "border-orange-500/20" },
+            new { Title = "Company Subscriptions", Desc = "View and override subscriptions per company.", Href = "/superadmin/subscriptions", Icon = "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z", Color = "text-blue-400", Bg = "bg-blue-500/10", Border = "border-blue-500/20" },
+            new { Title = "All Companies", Desc = "View all registered companies in the system.", Href = "/company", Icon = "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4", Color = "text-purple-400", Bg = "bg-purple-500/10", Border = "border-purple-500/20" },
+        })
+        {
+            <a href="@link.Href"
+               class="group bg-[#111114] border border-white/[0.05] rounded-[20px] p-6 hover:border-orange-500/20 hover:bg-[#16161a] transition-all block">
+                <div class="w-10 h-10 @link.Bg border @link.Border rounded-xl flex items-center justify-center @link.Color mb-4 group-hover:scale-110 transition-transform">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="@link.Icon"/>
+                    </svg>
+                </div>
+                <div class="text-sm font-bold text-white mb-1">@link.Title</div>
+                <div class="text-xs text-gray-500">@link.Desc</div>
+            </a>
+        }
+    </div>
+</div>
