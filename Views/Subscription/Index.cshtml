@@ -3,22 +3,25 @@
     Layout = "_AdminLayout";
     ViewData["Title"] = "Subscription";
 
+    var isActive = Model.Status == PmesCSharp.Models.SubscriptionStatus.Active;
+    var isTrial = Model.Status == PmesCSharp.Models.SubscriptionStatus.Trialing;
+    var isPro = Model.Plan == PmesCSharp.Models.SubscriptionPlan.Pro;
+
     var statusColor = Model.Status switch
     {
         PmesCSharp.Models.SubscriptionStatus.Active => "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
         PmesCSharp.Models.SubscriptionStatus.Trialing => "text-blue-400 bg-blue-500/10 border-blue-500/20",
         PmesCSharp.Models.SubscriptionStatus.PastDue => "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
-        PmesCSharp.Models.SubscriptionStatus.Canceled or PmesCSharp.Models.SubscriptionStatus.Expired => "text-red-400 bg-red-500/10 border-red-500/20",
-        _ => "text-gray-400 bg-gray-500/10 border-gray-500/20"
+        _ => "text-red-400 bg-red-500/10 border-red-500/20"
     };
 
-    var planColor = Model.Plan == PmesCSharp.Models.SubscriptionPlan.Pro
+    var planColor = isPro
         ? "text-orange-400 bg-orange-500/10 border-orange-500/20"
         : "text-blue-400 bg-blue-500/10 border-blue-500/20";
 
     var daysLeft = Model.CurrentPeriodEndsAt.HasValue
-        ? (int)(Model.CurrentPeriodEndsAt.Value - DateTime.UtcNow).TotalDays
-        : 0;
+        ? Math.Max(0, (int)(Model.CurrentPeriodEndsAt.Value - DateTime.UtcNow).TotalDays)
+        : -1;
 }
 
 @if (TempData["Success"] is string success)
@@ -26,72 +29,93 @@
     <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
 }
 
-<div class="max-w-3xl space-y-6">
+<div class="max-w-3xl space-y-5">
 
+    <!-- Current Plan Card-->
     <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
             <div>
-                <div class="text-xs font-bold text-gray-600 uppercase tracking-[0.2em] mb-3">Current Plan</div>
-                <div class="flex items-center gap-3">
-                    <span class="text-3xl font-black text-white">@Model.Plan</span>
+                <div class="text-xs font-bold text-gray-600 uppercase tracking-[0.2em] mb-2">Current Plan</div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span class="text-2xl font-black text-white">@Model.Plan</span>
                     <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border @planColor">@Model.Plan</span>
                     <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border @statusColor">@Model.Status</span>
                 </div>
             </div>
-            <a href="/subscription/setup" class="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
-                Upgrade Plan
-            </a>
+            @if (!isPro)
+            {
+                <a href="/subscription/setup"
+                   class="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Upgrade to Pro
+                </a>
+            }
         </div>
 
-        <div class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
             @foreach (var item in new[]
             {
                 new { Label = "Plan", Value = Model.Plan.ToString() },
                 new { Label = "Status", Value = Model.Status.ToString() },
-                new { Label = "Days Left", Value = daysLeft > 0 ? $"{daysLeft} days" : "Expired" },
-                new { Label = "Billing Email", Value = string.IsNullOrWhiteSpace(Model.BillingEmail) ? "—" : Model.BillingEmail },
+                new { Label = "Billing", Value = Model.BillingCycle.ToString() },
+                new { Label = "Email", Value = string.IsNullOrWhiteSpace(Model.BillingEmail) ? "—" : Model.BillingEmail },
             })
             {
                 <div class="p-4 rounded-2xl border border-white/[0.05] bg-white/[0.02]">
-                    <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">@item.Label</div>
+                    <div class="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">@item.Label</div>
                     <div class="text-sm font-bold text-white truncate">@item.Value</div>
                 </div>
             }
         </div>
 
-        @if (Model.CurrentPeriodEndsAt.HasValue)
+        @if (daysLeft >= 0)
         {
-            var total = 30;
-            var used = total - daysLeft;
-            var pct = Math.Max(0, Math.Min(100, (int)((double)used / total * 100)));
+            var periodDays = Model.BillingCycle == PmesCSharp.Models.SubscriptionBillingCycle.Annual ? 365 : 30;
+            var pct = Math.Max(0, Math.Min(100, (int)((double)daysLeft / periodDays * 100)));
             <div class="mt-6">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-xs text-gray-500">Billing period</div>
-                    <div class="text-xs text-gray-400">Renews @Model.CurrentPeriodEndsAt.Value.ToString("MMM dd, yyyy")</div>
+                    <div class="text-xs text-gray-500">@daysLeft days remaining</div>
+                    <div class="text-xs text-gray-500">Renews @Model.CurrentPeriodEndsAt!.Value.ToString("MMM dd, yyyy")</div>
                 </div>
-                <div class="h-2 rounded-full bg-white/[0.05] overflow-hidden">
-                    <div class="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full transition-all" style="width: @pct%"></div>
+                <div class="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full" style="width: @pct%"></div>
                 </div>
             </div>
         }
     </div>
 
+    <!-- Features-->
     <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <div class="flex items-center gap-3 mb-6">
-            <div class="w-1 h-6 bg-orange-500 rounded-full"></div>
-            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">Included Features</h3>
-        </div>
+        <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-5">Included in @Model.Plan</div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            @foreach (var f in Model.Plan == PmesCSharp.Models.SubscriptionPlan.Pro
-                ? new[] { "Production schedules & work orders", "Material requirements (MRP)", "Inventory movements", "QC inspections", "Production costing & reports", "Advanced audit & approvals", "Priority support & onboarding", "Unlimited users & companies" }
-                : new[] { "Production schedules & work orders", "Material requirements (MRP)", "Inventory movements", "QC inspections", "Basic dashboards & audit logs" })
+            @{
+                var features = isPro
+                    ? new[] { "Unlimited users", "Unlimited products & materials", "Production schedules & work orders", "Material requirements (MRP)", "Inventory & QC inspections", "Production costing & reports", "Advanced audit logs", "Priority support" }
+                    : new[] { "Up to 50 users", "Up to 500 products & materials", "Production schedules & work orders", "Material requirements (MRP)", "Inventory & QC inspections", "Basic audit logs" };
+            }
+            @foreach (var f in features)
             {
                 <div class="flex items-center gap-2.5 text-sm text-gray-400">
-                    <svg class="w-4 h-4 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    <svg class="w-4 h-4 @(isPro ? "text-orange-500" : "text-blue-400") flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     @f
                 </div>
             }
         </div>
     </div>
 
+    @if (!isPro)
+    {
+        <!-- Upgrade CTA-->
+        <div class="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-orange-500/20 rounded-[24px] p-8">
+            <div class="flex items-center gap-4 flex-wrap">
+                <div class="flex-1">
+                    <div class="text-base font-bold text-white mb-1">Unlock everything with Pro</div>
+                    <div class="text-sm text-gray-400">Unlimited users, advanced reports, costing, and priority support.</div>
+                </div>
+                <a href="/subscription/setup" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20 whitespace-nowrap">
+                    Upgrade Now →
+                </a>
+            </div>
+        </div>
+    }
 </div>

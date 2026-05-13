@@ -155,6 +155,20 @@ public class AccountController : Controller
             }
 
             await tx.CommitAsync(cancellationToken);
+
+            // Auto-create Free subscription so admin can use the system immediately
+            _db.Add(new CompanySubscription
+            {
+                CompanyId = company.Id,
+                Plan = SubscriptionPlan.Free,
+                BillingCycle = SubscriptionBillingCycle.Monthly,
+                Status = SubscriptionStatus.Active,
+                BillingEmail = model.Email,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            });
+            await _db.SaveChangesAsync(cancellationToken);
+
             await _signInManager.SignInAsync(user, isPersistent: false);
 
             try
@@ -170,7 +184,7 @@ public class AccountController : Controller
             }
             catch { }
 
-            return Redirect("/subscription/setup");
+            return Redirect("/admin");
         }
         catch (DbUpdateException)
         {
@@ -224,30 +238,17 @@ public class AccountController : Controller
 
     private async Task<string> ResolvePostSignInPathAsync(ApplicationUser user, IList<string> roles, CancellationToken cancellationToken)
     {
-        // Onboarding flow for admins: require subscription + company profile.
-        if (roles.Contains("admin") || roles.Contains("superadmin"))
+        // Superadmin goes straight to dashboard
+        if (roles.Contains("superadmin")) return "/admin";
+
+        // Admin onboarding: require subscription setup only if no subscription at all
+        if (roles.Contains("admin") && user.CompanyId is int companyId && companyId > 0)
         {
-            if (!roles.Contains("superadmin") && user.CompanyId is int companyId && companyId > 0)
-            {
-                var hasSubscription = await _db.Set<CompanySubscription>()
-                    .AsNoTracking()
-                    .AnyAsync(s => s.CompanyId == companyId, cancellationToken);
-                if (!hasSubscription) return "/subscription/setup";
-
-                var hasCompanyProfile = await _db.CompanyProfiles
-                    .AsNoTracking()
-                    .AnyAsync(p => p.CompanyId == companyId, cancellationToken);
-                if (!hasCompanyProfile) return "/company/profile";
-            }
+            var hasSubscription = await _db.Set<CompanySubscription>()
+                .AsNoTracking()
+                .AnyAsync(s => s.CompanyId == companyId, cancellationToken);
+            if (!hasSubscription) return "/subscription/setup";
         }
-
-        // User profile setup (for any role)
-        var needsUserProfile = string.IsNullOrWhiteSpace(user.FullName)
-            || user.DateOfBirth is null
-            || string.IsNullOrWhiteSpace(user.MobileNumber)
-            || string.IsNullOrWhiteSpace(user.Sex);
-
-        if (needsUserProfile) return "/profile/edit";
 
         return ResolveDashboardPath(roles);
     }
@@ -386,6 +387,8 @@ public class AccountController : Controller
 
     private static string ResolveDashboardPath(IList<string> roles)
     {
+        if (roles.Contains("superadmin")) return "/admin";
+        if (roles.Contains("admin")) return "/admin";
         if (roles.Contains("planner")) return "/planner";
         if (roles.Contains("inventory")) return "/inventory";
         if (roles.Contains("operator")) return "/operator";

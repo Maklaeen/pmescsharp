@@ -21,6 +21,18 @@ public sealed class EntitlementService
     public async Task<CompanyEntitlements> GetCurrentCompanyEntitlementsAsync(CancellationToken ct = default)
     {
         var companyId = _currentCompany.CompanyId;
+
+        // Superadmin has unlimited access
+        if (companyId == 0)
+            return CompanyEntitlements.FromPlan(SubscriptionPlan.Pro, SubscriptionStatus.Active,
+                new SubscriptionPlanDefinition
+                {
+                    Plan = SubscriptionPlan.Pro,
+                    MaxUsers = 0, MaxProducts = 0, MaxMaterials = 0,
+                    MaxWorkOrdersPerMonth = 0, MaxStorageMb = 0,
+                    EnableReports = true, EnableCosting = true, EnableAuditLogs = true,
+                });
+
         if (companyId <= 0)
         {
             var freePlan = await _settings.GetPlanAsync(SubscriptionPlan.Free, ct);
@@ -33,10 +45,11 @@ public sealed class EntitlementService
 
         var global = await _settings.GetAsync(ct);
 
+        // No subscription record = Free plan (still allowed, just limited)
         if (sub is null)
         {
             var freePlan = await _settings.GetPlanAsync(SubscriptionPlan.Free, ct);
-            return CompanyEntitlements.FromPlan(SubscriptionPlan.Free, SubscriptionStatus.Expired, freePlan);
+            return CompanyEntitlements.FromPlan(SubscriptionPlan.Free, SubscriptionStatus.Active, freePlan);
         }
 
         var now = DateTime.UtcNow;
