@@ -65,6 +65,8 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
         {
             options.ClientId = googleClientId;
             options.ClientSecret = googleClientSecret;
+            // This path is handled by the Google auth middleware.
+            // It must be a distinct endpoint from our own controller action.
             options.CallbackPath = "/signin-google/callback";
             options.SignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
             options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
@@ -126,15 +128,6 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-try
-{
-    await IdentitySeed.EnsureSeededAsync(app.Services, app.Configuration);
-}
-catch (Exception ex)
-{
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "Seed failed.");
-}
 
 // Auto-migrate on startup
 try
@@ -147,6 +140,17 @@ catch (Exception ex)
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     logger.LogError(ex, "Migration failed.");
+}
+
+// Seed after migration
+try
+{
+    await IdentitySeed.EnsureSeededAsync(app.Services, app.Configuration);
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Seed failed.");
 }
 
 app.Run();

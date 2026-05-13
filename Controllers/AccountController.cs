@@ -14,6 +14,7 @@ public class AccountController : Controller
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IConfiguration _configuration;
     private readonly AppDbContext _db;
     private readonly EmailService _email;
     private readonly IRecaptchaService _recaptcha;
@@ -21,12 +22,14 @@ public class AccountController : Controller
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
+        IConfiguration configuration,
         AppDbContext db,
         EmailService email,
         IRecaptchaService recaptcha)
     {
         _signInManager = signInManager;
         _userManager = userManager;
+        _configuration = configuration;
         _db = db;
         _email = email;
         _recaptcha = recaptcha;
@@ -34,7 +37,14 @@ public class AccountController : Controller
 
     [HttpGet("/login")]
     [AllowAnonymous]
-    public IActionResult Login() => View(new LoginViewModel());
+    public IActionResult Login()
+    {
+        ViewData["RecaptchaSiteKey"] =
+            _configuration["Recaptcha:SiteKey"] ??
+            _configuration["ReCaptchaSettings:SiteKey"];
+
+        return View(new LoginViewModel());
+    }
 
     [HttpPost("/login")]
     [AllowAnonymous]
@@ -77,7 +87,14 @@ public class AccountController : Controller
 
     [HttpGet("/register")]
     [AllowAnonymous]
-    public IActionResult Register() => View(new RegisterViewModel());
+    public IActionResult Register()
+    {
+        ViewData["RecaptchaSiteKey"] =
+            _configuration["Recaptcha:SiteKey"] ??
+            _configuration["ReCaptchaSettings:SiteKey"];
+
+        return View(new RegisterViewModel());
+    }
 
     [HttpPost("/register")]
     [AllowAnonymous]
@@ -167,14 +184,16 @@ public class AccountController : Controller
     [AllowAnonymous]
     public IActionResult SignInWithGoogle()
     {
-        var callbackUrl = Url.Action(nameof(GoogleCallback), "Account", null, Request.Scheme)!;
+        // Important: this must NOT be the same path as GoogleOptions.CallbackPath.
+        // CallbackPath is handled by the Google auth middleware, which then redirects here.
+        var callbackUrl = Url.Action(nameof(GoogleComplete), "Account", null, Request.Scheme)!;
         var props = _signInManager.ConfigureExternalAuthenticationProperties("Google", callbackUrl);
         return Challenge(props, "Google");
     }
 
-    [HttpGet("/signin-google/callback")]
+    [HttpGet("/signin-google/complete")]
     [AllowAnonymous]
-    public async Task<IActionResult> GoogleCallback()
+    public async Task<IActionResult> GoogleComplete()
     {
         var info = await _signInManager.GetExternalLoginInfoAsync();
         if (info is null) { TempData["Error"] = "Google sign-in failed."; return Redirect("/login"); }
