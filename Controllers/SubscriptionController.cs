@@ -34,7 +34,12 @@ public class SubscriptionController : Controller
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
-        if (companyId <= 0) return Forbid();
+        if (companyId <= 0)
+        {
+            if (User.IsInRole("superadmin"))
+                return Redirect("/superadmin/plans");
+            return Forbid();
+        }
 
         var sub = await _db.Set<CompanySubscription>()
             .AsNoTracking()
@@ -48,7 +53,12 @@ public class SubscriptionController : Controller
     public async Task<IActionResult> Setup(CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
-        if (companyId <= 0) return Forbid();
+        if (companyId <= 0)
+        {
+            if (User.IsInRole("superadmin"))
+                return Redirect("/superadmin/plans");
+            return Forbid();
+        }
 
         var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, ct);
         if (existing) return Redirect("/subscription");
@@ -72,7 +82,12 @@ public class SubscriptionController : Controller
     public async Task<IActionResult> Checkout([FromForm] string plan, [FromForm] string billingEmail, [FromForm] string? cycle, CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
-        if (companyId <= 0) return Forbid();
+        if (companyId <= 0)
+        {
+            if (User.IsInRole("superadmin"))
+                return Redirect("/superadmin/plans");
+            return Forbid();
+        }
 
         var planEnum = string.Equals(plan, "Pro", StringComparison.OrdinalIgnoreCase) ? SubscriptionPlan.Pro : SubscriptionPlan.Free;
         var billingCycle = string.Equals(cycle, "Annual", StringComparison.OrdinalIgnoreCase)
