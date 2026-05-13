@@ -102,7 +102,7 @@
             </div>
         </div>
 
-        {{-- MRP --}}
+        @* MRP *@
         <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
             <h3 class="text-lg font-bold text-white mb-2">MRP (Required vs Available)</h3>
             <p class="text-sm text-gray-500 mb-6">Based on BOM × planned quantity.</p>
@@ -159,7 +159,7 @@
             }
         </div>
 
-        {{-- Work Orders --}}
+        @* Work Orders *@
         <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
             <div class="flex items-center justify-between mb-6">
                 <div>
@@ -223,7 +223,7 @@
     </div>
 
     <div class="space-y-8">
-        {{-- QC --}}
+        @* QC *@
         @if (canQc)
         {
             <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
@@ -294,7 +294,7 @@
             </div>
         }
 
-        {{-- Costing --}}
+        @* Costing *@
         @if (canCost)
         {
             <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
@@ -334,7 +334,7 @@
             </div>
         }
 
-        {{-- Inventory --}}
+        @* Inventory *@
         @if (canInventory)
         {
             <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
