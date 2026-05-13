@@ -119,7 +119,11 @@ public class SubscriptionController : Controller
             HttpContext.Session.SetString("paymongo_plan", planEnum.ToString());
             HttpContext.Session.SetString("paymongo_cycle", billingCycle.ToString());
             HttpContext.Session.SetString("paymongo_email", billingEmail);
-            return Redirect(link.CheckoutUrl);
+            HttpContext.Session.SetString("paymongo_checkout_url", link.CheckoutUrl);
+
+            // Keep user in PMES and let them open PayMongo in a new tab/window.
+            // This avoids relying on PayMongo to redirect back (QRPh often does not auto-redirect).
+            return Redirect($"/subscription/waiting?plan={planEnum}&cycle={billingCycle}&email={Uri.EscapeDataString(billingEmail)}&linkId={Uri.EscapeDataString(link.LinkId)}");
         }
         catch (Exception ex)
         {
@@ -129,13 +133,17 @@ public class SubscriptionController : Controller
     }
 
     [HttpGet("/subscription/waiting")]
-    public IActionResult Waiting([FromQuery] string plan, [FromQuery] string? cycle, [FromQuery] string email)
+    public IActionResult Waiting([FromQuery] string plan, [FromQuery] string? cycle, [FromQuery] string email, [FromQuery] string? linkId)
     {
-        var linkId = HttpContext.Session.GetString("paymongo_link_id") ?? "";
-        ViewBag.LinkId = linkId;
+        var effectiveLinkId = !string.IsNullOrWhiteSpace(linkId)
+            ? linkId
+            : (HttpContext.Session.GetString("paymongo_link_id") ?? "");
+
+        ViewBag.LinkId = effectiveLinkId;
         ViewBag.Plan = plan;
         ViewBag.Cycle = cycle ?? "";
         ViewBag.Email = email;
+        ViewBag.CheckoutUrl = HttpContext.Session.GetString("paymongo_checkout_url") ?? "";
         return View();
     }
 
@@ -154,26 +162,28 @@ public class SubscriptionController : Controller
     }
 
     [HttpGet("/subscription/success")]
-    public async Task<IActionResult> Success([FromQuery] string plan, [FromQuery] string? cycle, [FromQuery] string email, CancellationToken ct)
+    public async Task<IActionResult> Success([FromQuery] string plan, [FromQuery] string? cycle, [FromQuery] string email, [FromQuery] string? linkId, CancellationToken ct)
     {
         var companyId = _currentCompany.CompanyId;
         if (companyId <= 0) return Forbid();
 
-        var linkId = HttpContext.Session.GetString("paymongo_link_id");
+        var effectiveLinkId = !string.IsNullOrWhiteSpace(linkId)
+            ? linkId
+            : HttpContext.Session.GetString("paymongo_link_id");
 
         // If session is lost, try to recover linkId from the most recent payment for this company
-        if (string.IsNullOrWhiteSpace(linkId))
+        if (string.IsNullOrWhiteSpace(effectiveLinkId))
         {
             // Optionally, you can store the last linkId in the DB or pass it as a query param
             // For now, allow activation if user manually triggers
-            linkId = null;
+            effectiveLinkId = null;
         }
 
         // Verify payment if linkId exists, otherwise allow manual activation
         bool paid = true;
-        if (!string.IsNullOrWhiteSpace(linkId))
+        if (!string.IsNullOrWhiteSpace(effectiveLinkId))
         {
-            try { paid = await _payMongo.IsLinkPaidAsync(linkId, ct); }
+            try { paid = await _payMongo.IsLinkPaidAsync(effectiveLinkId, ct); }
             catch { paid = true; } // fail open for demo
         }
 
@@ -183,40 +193,42 @@ public class SubscriptionController : Controller
             return Redirect("/subscription/setup");
         }
 
-        var existing = await _db.Set<CompanySubscription>().AnyAsync(s => s.CompanyId == companyId, ct);
-        if (!existing)
-        {
-            var planEnum = string.Equals(plan, "Pro", StringComparison.OrdinalIgnoreCase) ? SubscriptionPlan.Pro : SubscriptionPlan.Free;
-            var billingCycle = string.Equals(cycle, "Annual", StringComparison.OrdinalIgnoreCase)
-                ? SubscriptionBillingCycle.Annual
-                : SubscriptionBillingCycle.Monthly;
+        var planEnum = string.Equals(plan, "Pro", StringComparison.OrdinalIgnoreCase) ? SubscriptionPlan.Pro : SubscriptionPlan.Free;
+        var billingCycle = string.Equals(cycle, "Annual", StringComparison.OrdinalIgnoreCase)
+            ? SubscriptionBillingCycle.Annual
+            : SubscriptionBillingCycle.Monthly;
 
-            var global = await _settings.GetAsync(ct);
-            var now = DateTime.UtcNow;
-            var sub = new CompanySubscription
+        var now = DateTime.UtcNow;
+        var sub = await _db.Set<CompanySubscription>().FirstOrDefaultAsync(s => s.CompanyId == companyId, ct);
+        if (sub is null)
+        {
+            sub = new CompanySubscription
             {
                 CompanyId = companyId,
-                Plan = planEnum,
-                BillingCycle = billingCycle,
-                Status = SubscriptionStatus.Active,
-                TrialEndsAt = now.AddDays(global.TrialDays),
-                CurrentPeriodEndsAt = billingCycle == SubscriptionBillingCycle.Annual ? now.AddYears(1) : now.AddMonths(1),
-                BillingEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
                 CreatedAt = now,
-                UpdatedAt = now,
             };
             _db.Add(sub);
-            await _db.SaveChangesAsync(ct);
-            await _audit.LogAsync("subscription.activated", "CompanySubscription", sub.Id.ToString(), $"Plan={sub.Plan} via PayMongo", ct);
         }
+
+        sub.Plan = planEnum;
+        sub.BillingCycle = billingCycle;
+        sub.Status = SubscriptionStatus.Active;
+        sub.TrialEndsAt = null;
+        sub.CurrentPeriodEndsAt = billingCycle == SubscriptionBillingCycle.Annual ? now.AddYears(1) : now.AddMonths(1);
+        sub.BillingEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        sub.UpdatedAt = now;
+
+        await _db.SaveChangesAsync(ct);
+        await _audit.LogAsync("subscription.activated", "CompanySubscription", sub.Id.ToString(), $"Plan={sub.Plan} via PayMongo", ct);
 
         HttpContext.Session.Remove("paymongo_link_id");
         HttpContext.Session.Remove("paymongo_plan");
         HttpContext.Session.Remove("paymongo_cycle");
         HttpContext.Session.Remove("paymongo_email");
+        HttpContext.Session.Remove("paymongo_checkout_url");
 
         TempData["Success"] = $"You're now on the {plan} plan!";
-        return Redirect("/admin/dashboard");
+        return Redirect("/subscription");
     }
 
     [HttpPost("/subscription/trial")]

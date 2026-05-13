@@ -5,6 +5,7 @@
     var plan = ViewBag.Plan as string ?? "";
     var cycle = ViewBag.Cycle as string ?? "";
     var email = ViewBag.Email as string ?? "";
+    var checkoutUrl = ViewBag.CheckoutUrl as string ?? "";
 }
 
 <div class="flex items-center justify-center min-h-[70vh]">
@@ -24,6 +25,16 @@
             <p class="text-gray-500 text-sm mb-2">Please wait while we confirm your payment with PayMongo.</p>
             <p class="text-gray-600 text-xs">This page will automatically redirect once payment is confirmed.</p>
 
+            @if (!string.IsNullOrWhiteSpace(checkoutUrl))
+            {
+                <div class="mt-6">
+                    <a href="@checkoutUrl" target="_blank" rel="noopener" class="inline-flex px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all">
+                        Open PayMongo Checkout
+                    </a>
+                    <div class="text-xs text-gray-500 mt-2">After paying, come back to this tab. We will verify and activate automatically.</div>
+                </div>
+            }
+
             <div class="mt-8 bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
                 <div class="flex items-center justify-between text-sm mb-3">
                     <span class="text-gray-500">Plan</span>
@@ -38,7 +49,7 @@
                      <span class="text-white font-bold">(see PayMongo)</span>
                  </div>
                  <div class="mt-6 text-center">
-                     <a href="/subscription/success?plan=@plan&cycle=@cycle&email=@email" class="inline-block px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all mt-2">
+                     <a href="/subscription/success?plan=@Uri.EscapeDataString(plan)&cycle=@Uri.EscapeDataString(cycle)&email=@Uri.EscapeDataString(email)&linkId=@Uri.EscapeDataString(linkId)" class="inline-block px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all mt-2">
                          Activate Subscription
                      </a>
                      <div class="text-xs text-gray-500 mt-2">If you already paid but are not redirected, click here to activate your subscription.</div>
@@ -69,7 +80,7 @@
             </div>
             <h2 class="text-2xl font-black text-white tracking-tight mb-2">Payment Pending</h2>
             <p class="text-gray-500 text-sm mb-6">We couldn't confirm your payment yet. If you already paid, click below.</p>
-            <a href="/subscription/success?plan=@plan&cycle=@Uri.EscapeDataString(cycle)&email=@Uri.EscapeDataString(email)"
+            <a href="/subscription/success?plan=@plan&cycle=@Uri.EscapeDataString(cycle)&email=@Uri.EscapeDataString(email)&linkId=@Uri.EscapeDataString(linkId)"
                class="inline-flex px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all">
                 I Already Paid — Activate Now
             </a>
@@ -116,7 +127,7 @@
         }
 
         function activateSubscription() {
-            window.location.href = '/subscription/success?plan=' + encodeURIComponent(plan) + '&cycle=' + encodeURIComponent('@cycle') + '&email=' + encodeURIComponent(email);
+            window.location.href = '/subscription/success?plan=' + encodeURIComponent(plan) + '&cycle=' + encodeURIComponent('@cycle') + '&email=' + encodeURIComponent(email) + '&linkId=' + encodeURIComponent(linkId);
         }
 
         function showSuccess() {
