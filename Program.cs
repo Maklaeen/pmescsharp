@@ -8,7 +8,16 @@ using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
+});
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+});
 
 builder.Services.AddHttpClient();
 
