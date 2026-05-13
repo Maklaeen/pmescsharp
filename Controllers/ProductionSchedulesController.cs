@@ -13,12 +13,14 @@ public class ProductionSchedulesController : Controller
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly PmesCSharp.Services.EntitlementService _entitlements;
+    private readonly ICurrentCompany _currentCompany;
 
-    public ProductionSchedulesController(AppDbContext db, UserManager<ApplicationUser> userManager, PmesCSharp.Services.EntitlementService entitlements)
+    public ProductionSchedulesController(AppDbContext db, UserManager<ApplicationUser> userManager, PmesCSharp.Services.EntitlementService entitlements, ICurrentCompany currentCompany)
     {
         _db = db;
         _userManager = userManager;
         _entitlements = entitlements;
+        _currentCompany = currentCompany;
     }
 
     [HttpGet("/production/schedules")]
@@ -65,6 +67,7 @@ public class ProductionSchedulesController : Controller
         var user = await _userManager.GetUserAsync(User);
         var schedule = new ProductionSchedule
         {
+            CompanyId = _currentCompany.CompanyId,
             ProductId = productId,
             PlannedQuantity = plannedQuantity,
             ScheduleDate = DateOnly.Parse(scheduleDate),
@@ -139,10 +142,12 @@ public class ProductionSchedulesController : Controller
         }
 
         var steps = new[] { "Printing", "Cutting", "Finishing", "Packaging" };
+        var companyId = _currentCompany.CompanyId;
         foreach (var (step, i) in steps.Select((s, i) => (s, i)))
         {
             _db.WorkOrders.Add(new WorkOrder
             {
+                CompanyId = companyId,
                 ProductionScheduleId = id,
                 WorkOrderNo = $"WO-{id:D4}-{(i + 1):D2}",
                 ProcessStep = step,

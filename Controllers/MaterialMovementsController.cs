@@ -12,11 +12,13 @@ public class MaterialMovementsController : Controller
 {
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentCompany _currentCompany;
 
-    public MaterialMovementsController(AppDbContext db, UserManager<ApplicationUser> userManager)
+    public MaterialMovementsController(AppDbContext db, UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany)
     {
         _db = db;
         _userManager = userManager;
+        _currentCompany = currentCompany;
     }
 
     [HttpGet("/inventory/material-movements")]
@@ -54,6 +56,7 @@ public class MaterialMovementsController : Controller
 
         _db.MaterialMovements.Add(new MaterialMovement
         {
+            CompanyId = _currentCompany.CompanyId,
             MaterialId = materialId,
             MovementType = movementType,
             Quantity = quantity,

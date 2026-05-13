@@ -11,8 +11,13 @@ namespace PmesCSharp.Controllers;
 public class BomController : Controller
 {
     private readonly AppDbContext _db;
+    private readonly ICurrentCompany _currentCompany;
 
-    public BomController(AppDbContext db) => _db = db;
+    public BomController(AppDbContext db, ICurrentCompany currentCompany)
+    {
+        _db = db;
+        _currentCompany = currentCompany;
+    }
 
     [HttpGet("/admin/bom")]
     public async Task<IActionResult> Index([FromQuery] int page = 1)
@@ -61,6 +66,7 @@ public class BomController : Controller
         var material = await _db.Materials.FindAsync(model.MaterialId);
         _db.BillOfMaterials.Add(new BillOfMaterial
         {
+            CompanyId = _currentCompany.CompanyId,
             ProductId = model.ProductId,
             MaterialId = model.MaterialId,
             QuantityRequired = model.QuantityRequired,

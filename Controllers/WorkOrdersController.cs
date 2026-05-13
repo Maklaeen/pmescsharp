@@ -12,11 +12,13 @@ public class WorkOrdersController : Controller
 {
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentCompany _currentCompany;
 
-    public WorkOrdersController(AppDbContext db, UserManager<ApplicationUser> userManager)
+    public WorkOrdersController(AppDbContext db, UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany)
     {
         _db = db;
         _userManager = userManager;
+        _currentCompany = currentCompany;
     }
 
     [HttpGet("/production/work-orders")]
@@ -138,6 +140,7 @@ public class WorkOrdersController : Controller
 
         _db.MaterialMovements.Add(new MaterialMovement
         {
+            CompanyId = _currentCompany.CompanyId,
             MaterialId = materialId,
             MovementType = "out",
             Quantity = quantity,

@@ -12,11 +12,13 @@ public class QualityInspectionsController : Controller
 {
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentCompany _currentCompany;
 
-    public QualityInspectionsController(AppDbContext db, UserManager<ApplicationUser> userManager)
+    public QualityInspectionsController(AppDbContext db, UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany)
     {
         _db = db;
         _userManager = userManager;
+        _currentCompany = currentCompany;
     }
 
     [HttpGet("/qc/inspections")]
@@ -47,6 +49,7 @@ public class QualityInspectionsController : Controller
 
         _db.QualityChecks.Add(new QualityCheck
         {
+            CompanyId = _currentCompany.CompanyId,
             ProductionScheduleId = scheduleId,
             InspectedByUserId = user?.Id,
             Result = result,
