@@ -12,11 +12,13 @@ public class MaterialsController : Controller
 {
     private readonly AppDbContext _db;
     private readonly PmesCSharp.Services.EntitlementService _entitlements;
+    private readonly ICurrentCompany _currentCompany;
 
-    public MaterialsController(AppDbContext db, PmesCSharp.Services.EntitlementService entitlements)
+    public MaterialsController(AppDbContext db, PmesCSharp.Services.EntitlementService entitlements, ICurrentCompany currentCompany)
     {
         _db = db;
         _entitlements = entitlements;
+        _currentCompany = currentCompany;
     }
 
     [HttpGet("/admin/materials")]
@@ -38,7 +40,7 @@ public class MaterialsController : Controller
     [HttpGet("/admin/materials/create")]
     public IActionResult Create() => View(new MaterialFormViewModel());
 
-    [HttpPost("/admin/materials/create")]
+    [HttpPost("/admin/materials")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Store(MaterialFormViewModel model)
     {
@@ -60,6 +62,7 @@ public class MaterialsController : Controller
 
         _db.Materials.Add(new Material
         {
+            CompanyId = _currentCompany.CompanyId,
             MaterialCode = model.MaterialCode,
             MaterialName = model.MaterialName,
             Description = model.Description,

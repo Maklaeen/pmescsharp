@@ -49,7 +49,7 @@ public class ProductionSchedulesController : Controller
         return View();
     }
 
-    [HttpPost("/production/schedules/create")]
+    [HttpPost("/production/schedules")]
     [Authorize(Roles = "superadmin,admin,planner")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Store([FromForm] int productId, [FromForm] int plannedQuantity,

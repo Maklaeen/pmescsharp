@@ -40,7 +40,7 @@ public class ProductsController : Controller
     [HttpGet("/admin/products/create")]
     public IActionResult Create() => View(new ProductFormViewModel());
 
-    [HttpPost("/admin/products/create")]
+    [HttpPost("/admin/products")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Store(ProductFormViewModel model)
     {

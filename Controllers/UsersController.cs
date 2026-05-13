@@ -173,8 +173,8 @@ public class UsersController : Controller
         return View(new UserFormViewModel());
     }
 
-    [HttpPost("/admin/users/create")]
-    [HttpPost("/users/create")]
+    [HttpPost("/admin/users")]
+    [HttpPost("/users")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Store(UserFormViewModel model)
     {

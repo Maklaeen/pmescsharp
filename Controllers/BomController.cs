@@ -39,7 +39,7 @@ public class BomController : Controller
         return View(new BomFormViewModel());
     }
 
-    [HttpPost("/admin/bom/create")]
+    [HttpPost("/admin/bom")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Store(BomFormViewModel model)
     {
