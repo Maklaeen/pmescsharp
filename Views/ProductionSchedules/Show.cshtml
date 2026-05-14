@@ -19,7 +19,8 @@
     };
 
     bool qcReady = Model.Status == "in_progress"
-        && Model.WorkOrders.Count > 0;
+        && Model.WorkOrders.Count > 0
+        && Model.WorkOrders.All(w => w.Status == "done");
 }
 
 @if (TempData["Success"] is string success)
