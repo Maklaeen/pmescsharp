@@ -56,21 +56,21 @@
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     @if (canClaim)
                     {
-                        <form method="post" action="/production/work-orders/@Model.Id/claim">
+                        <form method="post" action="/production/work-orders/@Model.Id/take">
                             @Html.AntiForgeryToken()
                             <button class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Take Work Order</button>
                         </form>
                     }
                     @if (canOperateThis && Model.Status == "pending")
                     {
-                        <form method="post" action="/production/work-orders/@Model.Id/start">
+                        <form method="post" action="/production/work-orders/@Model.Id/status-start">
                             @Html.AntiForgeryToken()
                             <button class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 text-white transition-all shadow-lg shadow-orange-900/20">Start</button>
                         </form>
                     }
                     @if (isAdminLike && Model.Status != "cancelled" && Model.Status != "done")
                     {
-                        <form method="post" action="/production/work-orders/@Model.Id/cancel" onsubmit="return confirm('Cancel this work order?');">
+                        <form method="post" action="/production/work-orders/@Model.Id/status-cancel" onsubmit="return confirm('Cancel this work order?');">
                             @Html.AntiForgeryToken()
                             <button class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Cancel</button>
                         </form>
@@ -97,7 +97,7 @@
             {
                 <div class="mt-8 pt-8 border-t border-white/[0.05]">
                     <h3 class="text-sm font-bold text-white">Assign Operator</h3>
-                    <form method="post" action="/production/work-orders/@Model.Id/assign" class="mt-4 flex items-center gap-3">
+                    <form method="post" action="/production/work-orders/@Model.Id/operator" class="mt-4 flex items-center gap-3">
                         @Html.AntiForgeryToken()
                         <select name="assignedToUserId" class="flex-1 bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none">
                             <option value="">Unassigned</option>
@@ -118,7 +118,7 @@
             <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
                 <h3 class="text-lg font-bold text-white">Finish Work Order</h3>
                 <p class="text-sm text-gray-500 mt-1">@(Model.Status == "done" ? "Update actual quantity." : "Set actual quantity and mark as DONE.")</p>
-                <form method="post" action="/production/work-orders/@Model.Id/finish" class="mt-6 flex items-center gap-3">
+                <form method="post" action="/production/work-orders/@Model.Id/status-done" class="mt-6 flex items-center gap-3">
                     @Html.AntiForgeryToken()
                     <input type="number" min="0" name="actualQty" value="@Model.ActualQty"
                         class="flex-1 bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"

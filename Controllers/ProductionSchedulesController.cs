@@ -120,7 +120,7 @@ public class ProductionSchedulesController : Controller
         return View(schedule);
     }
 
-    [HttpPost("/production/schedules/{id:int}/generate-work-orders")]
+    [HttpPost("/production/schedules/{id:int}/generate")]
     [Authorize(Roles = "superadmin,admin,planner")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateWorkOrders(int id)
@@ -204,7 +204,7 @@ public class ProductionSchedulesController : Controller
         return Redirect($"/production/schedules/{id}");
     }
 
-    [HttpPost("/production/schedules/{id:int}/start")]
+    [HttpPost("/production/schedules/{id:int}/status-start")]
     [Authorize(Roles = "superadmin,admin,planner")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(int id)
@@ -219,7 +219,7 @@ public class ProductionSchedulesController : Controller
         return Redirect($"/production/schedules/{id}");
     }
 
-    [HttpPost("/production/schedules/{id:int}/complete")]
+    [HttpPost("/production/schedules/{id:int}/status-complete")]
     [Authorize(Roles = "superadmin,admin,planner")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Complete(int id)
@@ -234,7 +234,7 @@ public class ProductionSchedulesController : Controller
         return Redirect($"/production/schedules/{id}");
     }
 
-    [HttpPost("/production/schedules/{id:int}/cancel")]
+    [HttpPost("/production/schedules/{id:int}/status-cancel")]
     [Authorize(Roles = "superadmin,admin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(int id)

@@ -114,7 +114,7 @@
                                     }
                                     else
                                     {
-                                        <form method="post" action="/users/@user.Id/restore" onsubmit="return confirm('Restore this user?');" class="inline">
+                                        <form method="post" action="/users/@user.Id/status-restore" onsubmit="return confirm('Restore this user?');" class="inline">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all">Restore</button>
                                         </form>

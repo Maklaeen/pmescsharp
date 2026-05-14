@@ -69,7 +69,7 @@ public class CostingController : Controller
         return View(schedules);
     }
 
-    [HttpPost("/costing/{scheduleId:int}/compute")]
+    [HttpPost("/costing/{scheduleId:int}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Compute(int scheduleId, [FromForm] decimal laborCost)
     {

@@ -70,7 +70,7 @@
                     {
                         @if (!Model.WorkOrders.Any())
                         {
-                            <form method="post" action="/production/schedules/@Model.Id/generate-work-orders">
+                            <form method="post" action="/production/schedules/@Model.Id/generate">
                                 @Html.AntiForgeryToken()
                                 <button class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Generate Work Orders</button>
                             </form>
@@ -78,21 +78,21 @@
                         @if (Model.Status == "planned")
                         {
                             <a href="/production/schedules/@Model.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
-                            <form method="post" action="/production/schedules/@Model.Id/start">
+                            <form method="post" action="/production/schedules/@Model.Id/status-start">
                                 @Html.AntiForgeryToken()
                                 <button class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 text-white transition-all shadow-lg shadow-orange-900/20">Start</button>
                             </form>
                         }
                         @if (Model.Status == "in_progress")
                         {
-                            <form method="post" action="/production/schedules/@Model.Id/complete">
+                            <form method="post" action="/production/schedules/@Model.Id/status-complete">
                                 @Html.AntiForgeryToken()
                                 <button class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all">Complete</button>
                             </form>
                         }
                         @if (canCancel && (Model.Status == "planned" || Model.Status == "in_progress"))
                         {
-                            <form method="post" action="/production/schedules/@Model.Id/cancel">
+                            <form method="post" action="/production/schedules/@Model.Id/status-cancel">
                                 @Html.AntiForgeryToken()
                                 <button class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Cancel</button>
                             </form>
@@ -300,7 +300,7 @@
             <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
                 <h3 class="text-lg font-bold text-white">Production Costing</h3>
                 <p class="text-sm text-gray-500 mt-1">Compute material cost from BOM and optional labor cost.</p>
-                <form method="post" action="/costing/@Model.Id/compute" class="mt-6 space-y-4">
+                <form method="post" action="/costing/@Model.Id" class="mt-6 space-y-4">
                     @Html.AntiForgeryToken()
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Labor Cost (optional)</label>

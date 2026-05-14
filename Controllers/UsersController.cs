@@ -93,8 +93,8 @@ public class UsersController : Controller
         return View(items);
     }
 
-    [HttpPost("/admin/users/{id}/approve")]
-    [HttpPost("/users/{id}/approve")]
+    [HttpPost("/admin/users/{id}/status-approve")]
+    [HttpPost("/users/{id}/status-approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(string id, CancellationToken cancellationToken)
     {
@@ -140,8 +140,8 @@ public class UsersController : Controller
         return Redirect("/users/pending");
     }
 
-    [HttpPost("/admin/users/{id}/reject")]
-    [HttpPost("/users/{id}/reject")]
+    [HttpPost("/admin/users/{id}/status-reject")]
+    [HttpPost("/users/{id}/status-reject")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(string id, CancellationToken cancellationToken)
     {
@@ -354,8 +354,8 @@ public class UsersController : Controller
         return Redirect("/users");
     }
 
-    [HttpPost("/admin/users/{id}/restore")]
-    [HttpPost("/users/{id}/restore")]
+    [HttpPost("/admin/users/{id}/status-restore")]
+    [HttpPost("/users/{id}/status-restore")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Restore(string id)
     {

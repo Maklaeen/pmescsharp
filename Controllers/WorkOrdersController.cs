@@ -54,7 +54,7 @@ public class WorkOrdersController : Controller
         return View(wo);
     }
 
-    [HttpPost("/production/work-orders/{id:int}/claim")]
+    [HttpPost("/production/work-orders/{id:int}/take")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Claim(int id)
     {
@@ -68,7 +68,7 @@ public class WorkOrdersController : Controller
         return Redirect($"/production/work-orders/{id}");
     }
 
-    [HttpPost("/production/work-orders/{id:int}/start")]
+    [HttpPost("/production/work-orders/{id:int}/status-start")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(int id)
     {
@@ -82,7 +82,7 @@ public class WorkOrdersController : Controller
         return Redirect($"/production/work-orders/{id}");
     }
 
-    [HttpPost("/production/work-orders/{id:int}/finish")]
+    [HttpPost("/production/work-orders/{id:int}/status-done")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Finish(int id, [FromForm] int actualQty)
     {
@@ -97,7 +97,7 @@ public class WorkOrdersController : Controller
         return Redirect($"/production/work-orders/{id}");
     }
 
-    [HttpPost("/production/work-orders/{id:int}/cancel")]
+    [HttpPost("/production/work-orders/{id:int}/status-cancel")]
     [Authorize(Roles = "superadmin,admin,planner")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(int id)
@@ -112,7 +112,7 @@ public class WorkOrdersController : Controller
         return Redirect($"/production/work-orders/{id}");
     }
 
-    [HttpPost("/production/work-orders/{id:int}/assign")]
+    [HttpPost("/production/work-orders/{id:int}/operator")]
     [Authorize(Roles = "superadmin,admin,planner")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Assign(int id, [FromForm] string? assignedToUserId)
