@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PmesCSharp.Data;
 using PmesCSharp.Models;
 using PmesCSharp.ViewModels.Account;
 using System.Text;
@@ -14,12 +16,14 @@ public class ProfileController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly PmesCSharp.Services.EmailService _email;
+    private readonly AppDbContext _db;
 
-    public ProfileController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, PmesCSharp.Services.EmailService email)
+    public ProfileController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, PmesCSharp.Services.EmailService email, AppDbContext db)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _email = email;
+        _db = db;
     }
 
     [HttpGet("/profile")]
@@ -168,5 +172,99 @@ public class ProfileController : Controller
         }
 
         return Redirect("/profile");
+    }
+
+    [HttpPost("/profile/delete/send-code")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendDeleteCode()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Json(new { success = false, message = "User not found." });
+
+        // Generate 6-digit code and store in session
+        var code = new Random().Next(100000, 999999).ToString();
+        HttpContext.Session.SetString("delete_account_code", code);
+        HttpContext.Session.SetString("delete_account_code_expiry", DateTime.UtcNow.AddMinutes(10).ToString("O"));
+
+        try
+        {
+            await _email.SendAsync(
+                user.Email!,
+                "PMES Account Deletion Verification",
+                $"""
+                <div style="font-family:sans-serif;max-width:480px;margin:auto">
+                    <h2 style="color:#ef4444">Account Deletion Request</h2>
+                    <p>You requested to delete your PMES account. Use the code below to confirm:</p>
+                    <div style="font-size:36px;font-weight:900;letter-spacing:0.3em;color:#ef4444;text-align:center;padding:20px;background:#1a1a1a;border-radius:12px;margin:20px 0">{code}</div>
+                    <p style="color:#888;font-size:12px">This code expires in 10 minutes. If you did not request this, ignore this email.</p>
+                </div>
+                """
+            );
+            return Json(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = $"Failed to send email: {ex.Message}" });
+        }
+    }
+
+    [HttpPost("/profile/delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAccount([FromForm] string code)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Redirect("/login");
+
+        // Verify code
+        var storedCode = HttpContext.Session.GetString("delete_account_code");
+        var expiryStr = HttpContext.Session.GetString("delete_account_code_expiry");
+
+        if (string.IsNullOrWhiteSpace(storedCode) || storedCode != code?.Trim())
+        {
+            TempData["Error"] = "Invalid verification code. Please try again.";
+            return Redirect("/profile");
+        }
+
+        if (DateTime.TryParse(expiryStr, out var expiry) && DateTime.UtcNow > expiry)
+        {
+            TempData["Error"] = "Verification code has expired. Please request a new one.";
+            return Redirect("/profile");
+        }
+
+        HttpContext.Session.Remove("delete_account_code");
+        HttpContext.Session.Remove("delete_account_code_expiry");
+
+        var isAdmin = await _userManager.IsInRoleAsync(user, "admin");
+        var companyId = user.CompanyId;
+
+        // Sign out first
+        await _signInManager.SignOutAsync();
+
+        // Delete user
+        await _userManager.DeleteAsync(user);
+
+        // If admin, delete company and all related data
+        if (isAdmin && companyId.HasValue && companyId > 0)
+        {
+            try
+            {
+                var company = await _db.Companies.FindAsync(companyId.Value);
+                if (company is not null)
+                {
+                    // EF cascade will handle related data via FK constraints
+                    // But we need to delete users of this company first
+                    var companyUsers = _userManager.Users.Where(u => u.CompanyId == companyId.Value).ToList();
+                    foreach (var u in companyUsers)
+                        await _userManager.DeleteAsync(u);
+
+                    _db.Companies.Remove(company);
+                    await _db.SaveChangesAsync();
+                }
+            }
+            catch { /* Best effort — company cleanup */ }
+        }
+
+        TempData["Success"] = "Your account has been deleted.";
+        return Redirect("/");
     }
 }

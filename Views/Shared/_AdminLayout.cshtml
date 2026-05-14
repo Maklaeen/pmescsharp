@@ -752,6 +752,106 @@
             if (window.innerWidth < 1024) closeSidebar();
         });
     });
+
+    // ── Global Button Loading State ──────────────────────────────────────────
+    // Automatically adds loading spinner to submit buttons on form submit
+    (function () {
+        var SPINNER = '<svg class="animate-spin w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>';
+
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (form.dataset.noLoader) return;
+
+            // Find the submit button that was clicked
+            var btn = form.querySelector('button[type="submit"]:not([data-no-loading])');
+            if (!btn) return;
+
+            var originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = SPINNER + '<span>' + (btn.dataset.loadingText || 'Processing...') + '</span>';
+            btn.style.opacity = '0.8';
+            btn.style.cursor = 'not-allowed';
+
+            // Safety: re-enable after 15s in case of error
+            setTimeout(function () {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                btn.style.opacity = '';
+                btn.style.cursor = '';
+            }, 15000);
+        });
+
+        // Re-enable buttons on page show (back/forward)
+        window.addEventListener('pageshow', function () {
+            document.querySelectorAll('button[type="submit"]:disabled').forEach(function (btn) {
+                btn.disabled = false;
+                btn.style.opacity = '';
+                btn.style.cursor = '';
+            });
+        });
+    })();
+
+    // ── Global Error Toast ───────────────────────────────────────────────────
+    // Shows a toast for unhandled fetch errors
+    window.showToast = function(message, type) {
+        var toast = document.createElement('div');
+        var colors = type === 'error'
+            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+            : type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+            : 'bg-orange-500/10 border-orange-500/20 text-orange-400';
+        toast.className = 'fixed bottom-6 right-6 z-[9999] px-5 py-3 rounded-2xl border text-sm font-semibold shadow-xl transition-all duration-300 ' + colors;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(function () {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(8px)';
+            setTimeout(function () { toast.remove(); }, 300);
+        }, 4000);
+    };
+
+    // Auto-dismiss TempData alerts after 5 seconds
+    (function () {
+        // Auto-add data-auto-dismiss to success alerts
+        document.querySelectorAll('.bg-emerald-500\/10, .bg-emerald-400\/10').forEach(function (el) {
+            setTimeout(function () {
+                el.style.transition = 'opacity 0.5s';
+                el.style.opacity = '0';
+                setTimeout(function () { el.remove(); }, 500);
+            }, 5000);
+        });
+    })();
+
+    // ── Global Form Validation Feedback ───────────────────────────────────────
+    // Highlight required fields that are empty on submit
+    (function () {
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            var valid = true;
+            form.querySelectorAll('input[required], select[required], textarea[required]').forEach(function (field) {
+                if (!field.value.trim()) {
+                    field.classList.add('ring-2', 'ring-red-500', 'border-red-500');
+                    valid = false;
+                    field.addEventListener('input', function () {
+                        field.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
+                    }, { once: true });
+                }
+            });
+        });
+    })();
+
+    // ── Confirm dialogs for destructive actions ────────────────────────────────
+    // Forms with data-confirm attribute will show a confirm dialog
+    (function () {
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            var msg = form.dataset.confirm;
+            if (msg && !confirm(msg)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    })();
 </script>
 </body>
 </html>
