@@ -99,6 +99,22 @@ public class ProfileController : Controller
             return Redirect("/profile");
         }
 
+        // Google sign-in users with no password — use AddPasswordAsync instead
+        if (string.IsNullOrWhiteSpace(user.PasswordHash))
+        {
+            var addResult = await _userManager.AddPasswordAsync(user, model.Password);
+            if (addResult.Succeeded)
+            {
+                await _signInManager.RefreshSignInAsync(user);
+                TempData["Success"] = "Password set successfully. You can now log in with email and password.";
+            }
+            else
+            {
+                TempData["Error"] = string.Join(" ", addResult.Errors.Select(e => e.Description));
+            }
+            return Redirect("/profile");
+        }
+
         var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.Password);
         if (result.Succeeded)
         {
@@ -236,32 +252,48 @@ public class ProfileController : Controller
 
         var isAdmin = await _userManager.IsInRoleAsync(user, "admin");
         var companyId = user.CompanyId;
+        var userId = user.Id;
 
         // Sign out first
         await _signInManager.SignOutAsync();
 
-        // Delete user
-        await _userManager.DeleteAsync(user);
-
-        // If admin, delete company and all related data
+        // If admin, delete company and all related data BEFORE deleting the user
         if (isAdmin && companyId.HasValue && companyId > 0)
         {
             try
             {
+                // Delete all users of this company first (except current user — delete last)
+                var companyUsers = await _userManager.Users
+                    .Where(u => u.CompanyId == companyId.Value && u.Id != userId)
+                    .ToListAsync();
+                foreach (var u in companyUsers)
+                    await _userManager.DeleteAsync(u);
+
+                // Now delete the admin user
+                var adminUser = await _userManager.FindByIdAsync(userId);
+                if (adminUser is not null)
+                    await _userManager.DeleteAsync(adminUser);
+
+                // Delete the company (cascade will handle related data)
                 var company = await _db.Companies.FindAsync(companyId.Value);
                 if (company is not null)
                 {
-                    // EF cascade will handle related data via FK constraints
-                    // But we need to delete users of this company first
-                    var companyUsers = _userManager.Users.Where(u => u.CompanyId == companyId.Value).ToList();
-                    foreach (var u in companyUsers)
-                        await _userManager.DeleteAsync(u);
-
                     _db.Companies.Remove(company);
                     await _db.SaveChangesAsync();
                 }
             }
-            catch { /* Best effort — company cleanup */ }
+            catch (Exception ex)
+            {
+                // Log but don't crash
+                _ = ex.Message;
+            }
+        }
+        else
+        {
+            // Non-admin: just delete the user
+            var userToDelete = await _userManager.FindByIdAsync(userId);
+            if (userToDelete is not null)
+                await _userManager.DeleteAsync(userToDelete);
         }
 
         TempData["Success"] = "Your account has been deleted.";

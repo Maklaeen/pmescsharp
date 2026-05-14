@@ -1,21 +1,60 @@
 @model List<PmesCSharp.Models.Company>
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "All Companies";
+    var showArchived = (bool)(ViewBag.ShowArchived ?? false);
+    var archivedCount = (int)(ViewBag.ArchivedCount ?? 0);
+    var activeCount = (int)(ViewBag.ActiveCount ?? 0);
+    ViewData["Title"] = showArchived ? "Archived Companies" : "All Companies";
+}
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@ok</div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">@err</div>
 }
 
 <div class="bg-gray-900/40 border border-gray-800/50 rounded-2xl p-8">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
             <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Superadmin</div>
-            <h2 class="text-xl font-extrabold text-white tracking-tight mt-1">All Companies</h2>
+            <h2 class="text-xl font-extrabold text-white tracking-tight mt-1">
+                @(showArchived ? "Archived Companies" : "All Companies")
+            </h2>
         </div>
-        <div class="text-sm text-gray-500">@Model.Count total</div>
+        <div class="flex items-center gap-3">
+            @if (!showArchived)
+            {
+                <a href="/company?archived=true"
+                   class="flex items-center gap-2 px-4 py-2 text-xs font-bold text-gray-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] rounded-xl transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8M10 12v4M14 12v4"/></svg>
+                    Archived (@archivedCount)
+                </a>
+            }
+            else
+            {
+                <a href="/company"
+                   class="flex items-center gap-2 px-4 py-2 text-xs font-bold text-gray-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] rounded-xl transition">
+                    ← Active Companies (@activeCount)
+                </a>
+            }
+        </div>
     </div>
+
+    @if (showArchived && Model.Any())
+    {
+        <div class="mb-4 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs px-4 py-2 rounded-xl">
+            ⚠️ Archived companies and all their data will be permanently deleted when you click Delete.
+        </div>
+    }
 
     @if (!Model.Any())
     {
-        <div class="text-gray-500 text-sm py-8 text-center">No companies registered yet.</div>
+        <div class="text-gray-500 text-sm py-8 text-center">
+            @(showArchived ? "No archived companies." : "No companies registered yet.")
+        </div>
     }
     else
     {
@@ -26,7 +65,12 @@
                         <th class="pb-3 pr-6">ID</th>
                         <th class="pb-3 pr-6">Name</th>
                         <th class="pb-3 pr-6">Code</th>
-                        <th class="pb-3">Created</th>
+                        <th class="pb-3 pr-6">Created</th>
+                        @if (showArchived)
+                        {
+                            <th class="pb-3 pr-6">Archived</th>
+                        }
+                        <th class="pb-3 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-800/50">
@@ -36,7 +80,42 @@
                             <td class="py-4 pr-6 text-gray-500 font-mono">@c.Id</td>
                             <td class="py-4 pr-6 text-white font-semibold">@c.Name</td>
                             <td class="py-4 pr-6 text-gray-400 font-mono">@c.Code</td>
-                            <td class="py-4 text-gray-500">@c.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td class="py-4 pr-6 text-gray-500">@c.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            @if (showArchived)
+                            {
+                                <td class="py-4 pr-6 text-gray-500">@(c.ArchivedAt?.ToString("MMM dd, yyyy") ?? "—")</td>
+                            }
+                            <td class="py-4 text-right">
+                                @if (!showArchived)
+                                {
+                                    <form method="post" action="/superadmin/companies/@c.Id/status-archive" class="inline"
+                                          data-confirm="Archive @c.Name? Their users will lose access until unarchived.">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit"
+                                                class="px-3 py-1.5 text-xs font-bold bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 rounded-lg transition">
+                                            Archive
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" action="/superadmin/companies/@c.Id/status-unarchive" class="inline mr-2">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit"
+                                                class="px-3 py-1.5 text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg transition">
+                                            Restore
+                                        </button>
+                                    </form>
+                                    <form method="post" action="/superadmin/companies/@c.Id/status-delete" class="inline"
+                                          data-confirm="Permanently delete @c.Name and ALL its data? This cannot be undone.">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit"
+                                                class="px-3 py-1.5 text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition">
+                                            Delete
+                                        </button>
+                                    </form>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>

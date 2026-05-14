@@ -31,10 +31,15 @@ public class CompanyController : Controller
 
         if (User.IsInRole("superadmin"))
         {
+            var showArchived = Request.Query["archived"] == "true";
             var allCompanies = await _db.Companies
                 .AsNoTracking()
+                .Where(c => c.IsArchived == showArchived)
                 .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
+            ViewBag.ShowArchived = showArchived;
+            ViewBag.ArchivedCount = await _db.Companies.CountAsync(c => c.IsArchived);
+            ViewBag.ActiveCount = await _db.Companies.CountAsync(c => !c.IsArchived);
             return View("Companies", allCompanies);
         }
 
@@ -109,5 +114,59 @@ public class CompanyController : Controller
 
         TempData["Success"] = "Company profile updated.";
         return Redirect("/company");
+    }
+
+    [HttpPost("/superadmin/companies/{id:int}/status-archive")]
+    [Authorize(Roles = "superadmin")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Archive(int id, CancellationToken ct)
+    {
+        var company = await _db.Companies.FindAsync(id);
+        if (company is null) return NotFound();
+
+        company.IsArchived = true;
+        company.ArchivedAt = DateTime.UtcNow;
+        company.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        TempData["Success"] = $"{company.Name} has been archived.";
+        return Redirect("/company");
+    }
+
+    [HttpPost("/superadmin/companies/{id:int}/status-unarchive")]
+    [Authorize(Roles = "superadmin")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unarchive(int id, CancellationToken ct)
+    {
+        var company = await _db.Companies.FindAsync(id);
+        if (company is null) return NotFound();
+
+        company.IsArchived = false;
+        company.ArchivedAt = null;
+        company.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        TempData["Success"] = $"{company.Name} has been unarchived.";
+        return Redirect("/company?archived=true");
+    }
+
+    [HttpPost("/superadmin/companies/{id:int}/status-delete")]
+    [Authorize(Roles = "superadmin")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteCompany(int id, CancellationToken ct)
+    {
+        var company = await _db.Companies.FindAsync(id);
+        if (company is null) return NotFound();
+        if (!company.IsArchived)
+        {
+            TempData["Error"] = "Only archived companies can be deleted.";
+            return Redirect("/company");
+        }
+
+        _db.Companies.Remove(company);
+        await _db.SaveChangesAsync(ct);
+
+        TempData["Success"] = $"{company.Name} has been permanently deleted.";
+        return Redirect("/company?archived=true");
     }
 }

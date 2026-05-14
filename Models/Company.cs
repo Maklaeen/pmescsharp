@@ -12,6 +12,9 @@ public class Company
     [Required, StringLength(50)]
     public string Code { get; set; } = "";
 
+    public bool IsArchived { get; set; } = false;
+    public DateTime? ArchivedAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
