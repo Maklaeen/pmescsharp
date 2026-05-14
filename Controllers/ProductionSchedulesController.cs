@@ -7,7 +7,7 @@ using PmesCSharp.Models;
 
 namespace PmesCSharp.Controllers;
 
-[Authorize(Roles = "superadmin,admin,planner,inventory,qc")]
+[Authorize(Roles = "superadmin,admin,planner,inventory,qc,operator")]
 public class ProductionSchedulesController : Controller
 {
     private readonly AppDbContext _db;

@@ -6,7 +6,7 @@ using PmesCSharp.Models;
 
 namespace PmesCSharp.Controllers;
 
-[Authorize(Roles = "superadmin,admin,planner")]
+[Authorize(Roles = "superadmin,admin,planner,qc,inventory,operator")]
 public class ReportsController : Controller
 {
     private readonly AppDbContext _db;
