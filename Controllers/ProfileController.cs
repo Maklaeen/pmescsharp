@@ -274,10 +274,24 @@ public class ProfileController : Controller
                 if (adminUser is not null)
                     await _userManager.DeleteAsync(adminUser);
 
-                // Delete the company (cascade will handle related data)
+                // Delete the company (delete related data first)
                 var company = await _db.Companies.FindAsync(companyId.Value);
                 if (company is not null)
                 {
+                    // Delete subscriptions
+                    var subs = _db.CompanySubscriptions.Where(s => s.CompanyId == companyId.Value);
+                    _db.CompanySubscriptions.RemoveRange(subs);
+
+                    // Delete company profiles
+                    var profiles = _db.CompanyProfiles.Where(p => p.CompanyId == companyId.Value);
+                    _db.CompanyProfiles.RemoveRange(profiles);
+
+                    // Delete company invites
+                    var invites = _db.Set<PmesCSharp.Models.CompanyInvite>().Where(i => i.CompanyId == companyId.Value);
+                    _db.Set<PmesCSharp.Models.CompanyInvite>().RemoveRange(invites);
+
+                    await _db.SaveChangesAsync();
+
                     _db.Companies.Remove(company);
                     await _db.SaveChangesAsync();
                 }

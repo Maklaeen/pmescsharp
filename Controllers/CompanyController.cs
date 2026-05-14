@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PmesCSharp.Data;
@@ -14,12 +15,14 @@ public class CompanyController : Controller
     private readonly AppDbContext _db;
     private readonly ICurrentCompany _currentCompany;
     private readonly IAuditLogger _audit;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public CompanyController(AppDbContext db, ICurrentCompany currentCompany, IAuditLogger audit)
+    public CompanyController(AppDbContext db, ICurrentCompany currentCompany, IAuditLogger audit, UserManager<ApplicationUser> userManager)
     {
         _db = db;
         _currentCompany = currentCompany;
         _audit = audit;
+        _userManager = userManager;
     }
 
     [HttpGet("/company/profile")]
@@ -116,6 +119,35 @@ public class CompanyController : Controller
         return Redirect("/company");
     }
 
+    private async Task DeleteCompanyAndRelatedDataAsync(int companyId, CancellationToken ct = default)
+    {
+        // Delete in correct order to avoid FK violations
+        var companyUsers = await _userManager.Users
+            .Where(u => u.CompanyId == companyId)
+            .ToListAsync(ct);
+        foreach (var u in companyUsers)
+            await _userManager.DeleteAsync(u);
+
+        // Delete related company data
+        var subscriptions = _db.CompanySubscriptions.Where(s => s.CompanyId == companyId);
+        _db.CompanySubscriptions.RemoveRange(subscriptions);
+
+        var profiles = _db.CompanyProfiles.Where(p => p.CompanyId == companyId);
+        _db.CompanyProfiles.RemoveRange(profiles);
+
+        var invites = _db.Set<PmesCSharp.Models.CompanyInvite>().Where(i => i.CompanyId == companyId);
+        _db.Set<PmesCSharp.Models.CompanyInvite>().RemoveRange(invites);
+
+        await _db.SaveChangesAsync(ct);
+
+        var company = await _db.Companies.FindAsync(companyId);
+        if (company is not null)
+        {
+            _db.Companies.Remove(company);
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
     [HttpPost("/superadmin/companies/{id:int}/status-archive")]
     [Authorize(Roles = "superadmin")]
     [ValidateAntiForgeryToken]
@@ -163,10 +195,17 @@ public class CompanyController : Controller
             return Redirect("/company");
         }
 
-        _db.Companies.Remove(company);
-        await _db.SaveChangesAsync(ct);
+        var name = company.Name;
+        try
+        {
+            await DeleteCompanyAndRelatedDataAsync(id, ct);
+            TempData["Success"] = $"{name} has been permanently deleted.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"Failed to delete company: {ex.Message}";
+        }
 
-        TempData["Success"] = $"{company.Name} has been permanently deleted.";
         return Redirect("/company?archived=true");
     }
 }
