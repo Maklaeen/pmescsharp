@@ -18,8 +18,9 @@ public class SubscriptionController : Controller
     private readonly IConfiguration _config;
     private readonly PayMongoService _payMongo;
     private readonly PmesCSharp.Services.SubscriptionSettingsService _settings;
+    private readonly EmailService _email;
 
-    public SubscriptionController(AppDbContext db, ICurrentCompany currentCompany, UserManager<ApplicationUser> userManager, IAuditLogger audit, IConfiguration config, PayMongoService payMongo, PmesCSharp.Services.SubscriptionSettingsService settings)
+    public SubscriptionController(AppDbContext db, ICurrentCompany currentCompany, UserManager<ApplicationUser> userManager, IAuditLogger audit, IConfiguration config, PayMongoService payMongo, PmesCSharp.Services.SubscriptionSettingsService settings, EmailService email)
     {
         _db = db;
         _currentCompany = currentCompany;
@@ -28,6 +29,7 @@ public class SubscriptionController : Controller
         _config = config;
         _payMongo = payMongo;
         _settings = settings;
+        _email = email;
     }
 
     [HttpGet("/subscription")]
@@ -220,6 +222,28 @@ public class SubscriptionController : Controller
 
         await _db.SaveChangesAsync(ct);
         await _audit.LogAsync("subscription.activated", "CompanySubscription", sub.Id.ToString(), $"Plan={sub.Plan} via PayMongo", ct);
+
+        // Send billing confirmation email
+        if (!string.IsNullOrWhiteSpace(sub.BillingEmail))
+        {
+            try
+            {
+                await _email.SendAsync(
+                    sub.BillingEmail,
+                    $"PMES Subscription Activated — {sub.Plan} Plan",
+                    $"""
+                    <div style="font-family:sans-serif;max-width:480px;margin:auto">
+                        <h2 style="color:#f97316">Subscription Activated</h2>
+                        <p>Your <strong>{sub.Plan}</strong> plan has been successfully activated.</p>
+                        <p><strong>Billing Cycle:</strong> {sub.BillingCycle}</p>
+                        <p><strong>Renews:</strong> {sub.CurrentPeriodEndsAt?.ToString("MMMM dd, yyyy") ?? "N/A"}</p>
+                        <p style="color:#888;font-size:12px">Thank you for using PMES.</p>
+                    </div>
+                    """
+                );
+            }
+            catch { /* Don't block activation if email fails */ }
+        }
 
         HttpContext.Session.Remove("paymongo_link_id");
         HttpContext.Session.Remove("paymongo_plan");

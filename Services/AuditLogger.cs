@@ -24,7 +24,9 @@ public sealed class AuditLogger : IAuditLogger
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public IQueryable<AuditLog> Query() => _db.AuditLogs.AsNoTracking().OrderByDescending(a => a.Id);
+    public IQueryable<AuditLog> Query() => _db.AuditLogs.AsNoTracking()
+        .Where(a => a.CompanyId == _currentCompany.CompanyId)
+        .OrderByDescending(a => a.Id);
     public IQueryable<AuditLog> QueryAll() => _db.AuditLogs.IgnoreQueryFilters().AsNoTracking().OrderByDescending(a => a.Id);
 
     public async Task LogAsync(

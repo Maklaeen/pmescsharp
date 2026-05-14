@@ -54,7 +54,7 @@
                             <div class="text-xs text-gray-600">@(line.Material?.MaterialCode ?? "")</div>
                         </td>
                         <td class="px-6 py-5 border-y border-white/[0.05]">
-                            <div class="text-xs text-gray-300 font-semibold">@line.QuantityRequired.ToString("G")</div>
+                            <div class="text-xs text-gray-300 font-semibold">@line.QuantityRequired.ToString("N2")</div>
                         </td>
                         <td class="px-6 py-5 border-y border-white/[0.05]">
                             <div class="text-xs text-gray-400">@(string.IsNullOrWhiteSpace(line.Unit) ? (line.Material?.Unit ?? "pcs") : line.Unit)</div>

@@ -176,7 +176,7 @@
                                                 <div class="text-xs text-gray-600">@(mv.Material?.MaterialCode ?? "")</div>
                                             </td>
                                             <td class="px-6 py-5 border-y border-white/[0.05]">
-                                                <div class="text-sm font-semibold text-gray-200">@mv.Quantity.ToString("G") @mv.Unit</div>
+                                                <div class="text-sm font-semibold text-gray-200">@mv.Quantity.ToString("N2") @mv.Unit</div>
                                             </td>
                                             <td class="px-6 py-5 border-y border-white/[0.05]">
                                                 <div class="text-xs text-gray-400">@mv.MovementType • @mv.ReferenceType</div>
