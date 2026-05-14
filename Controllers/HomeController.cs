@@ -14,6 +14,7 @@ public class HomeController : Controller
     public IActionResult Privacy() => View();
 
     [HttpGet("/error")]
+    [HttpPost("/error")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {

@@ -43,11 +43,13 @@ public class CostingController : Controller
 {
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentCompany _currentCompany;
 
-    public CostingController(AppDbContext db, UserManager<ApplicationUser> userManager)
+    public CostingController(AppDbContext db, UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany)
     {
         _db = db;
         _userManager = userManager;
+        _currentCompany = currentCompany;
     }
 
     [HttpGet("/costing")]
@@ -93,6 +95,7 @@ public class CostingController : Controller
         {
             _db.ProductionCosts.Add(new ProductionCost
             {
+                CompanyId = schedule.CompanyId,
                 ProductionScheduleId = scheduleId,
                 MaterialCost = materialCost,
                 LaborCost = laborCost,
