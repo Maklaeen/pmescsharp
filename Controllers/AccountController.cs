@@ -184,7 +184,7 @@ public class AccountController : Controller
             }
             catch { }
 
-            return Redirect("/admin");
+            return Redirect("/onboarding/company");
         }
         catch (DbUpdateException)
         {
@@ -216,7 +216,69 @@ public class AccountController : Controller
         if (string.IsNullOrWhiteSpace(email)) { TempData["Error"] = "Google sign-in failed (missing email)."; return Redirect("/login"); }
 
         var user = await _userManager.FindByEmailAsync(email);
-        if (user is null) { TempData["Error"] = "No PMES account found for this Google email. Please register first."; return Redirect("/login"); }
+
+        // If no account exists, create a new company + admin account automatically
+        if (user is null)
+        {
+            var fullName = info.Principal.FindFirstValue(System.Security.Claims.ClaimTypes.Name) ?? email;
+            var companyName = $"{fullName.Split(' ').FirstOrDefault() ?? "My"}'s Company";
+            var codeBase = SlugifyCompanyCode(companyName);
+            var code = await EnsureUniqueCompanyCodeAsync(codeBase, cancellationToken);
+
+            await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                var company = new Company { Name = companyName.Trim(), Code = code };
+                _db.Companies.Add(company);
+                await _db.SaveChangesAsync(cancellationToken);
+
+                user = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    FullName = fullName,
+                    EmailConfirmed = true,
+                    CompanyId = company.Id,
+                    IsApproved = true,
+                    ApprovedAt = DateTime.UtcNow,
+                };
+
+                var createResult = await _userManager.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    TempData["Error"] = "Failed to create account. Please try registering manually.";
+                    return Redirect("/register");
+                }
+
+                await _userManager.AddToRoleAsync(user, "admin");
+                await _userManager.AddLoginAsync(user, info);
+
+                await tx.CommitAsync(cancellationToken);
+
+                // Auto-create Free subscription
+                _db.Add(new CompanySubscription
+                {
+                    CompanyId = company.Id,
+                    Plan = SubscriptionPlan.Free,
+                    BillingCycle = SubscriptionBillingCycle.Monthly,
+                    Status = SubscriptionStatus.Active,
+                    BillingEmail = email,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                });
+                await _db.SaveChangesAsync(cancellationToken);
+
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                return Redirect("/onboarding/company");
+            }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                TempData["Error"] = "Failed to create account. Please try registering manually.";
+                return Redirect("/register");
+            }
+        }
+
         if (!user.IsApproved) { TempData["Error"] = "Your account is pending admin approval."; return Redirect("/login"); }
 
         var logins = await _userManager.GetLoginsAsync(user);
