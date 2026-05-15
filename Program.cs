@@ -77,7 +77,7 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
             // It must be a distinct endpoint from our own controller action.
             options.CallbackPath = "/signin-google/callback";
             options.SignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
-            options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
+            options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None;
             options.CorrelationCookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
             options.CorrelationCookie.HttpOnly = true;
             options.CorrelationCookie.IsEssential = true;
@@ -93,7 +93,7 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 
 builder.Services.ConfigureExternalCookie(options =>
 {
-    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None;
     options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
     options.Cookie.IsEssential = true;
 });
