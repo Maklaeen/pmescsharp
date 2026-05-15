@@ -93,7 +93,7 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 
 builder.Services.ConfigureExternalCookie(options =>
 {
-    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None;
     options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
     options.Cookie.IsEssential = true;
 });
