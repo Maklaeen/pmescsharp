@@ -22,6 +22,84 @@ public class SuperAdminController : Controller
         _settings = settings;
     }
 
+    [HttpGet("/superadmin/reports")]
+    public IActionResult Reports() => View();
+
+    [HttpGet("/superadmin/reports/data")]
+    public async Task<IActionResult> ReportsData([FromQuery] int? year, CancellationToken ct)
+    {
+        var y = year ?? DateTime.UtcNow.Year;
+        var monthLabels = Enumerable.Range(1, 12).Select(m => new DateTime(y, m, 1).ToString("MMM")).ToArray();
+
+        var revenue = new double[12];
+        var subscriptions = new int[12];
+        var approvedUsers = new int[12];
+
+        for (int m = 1; m <= 12; m++)
+        {
+            var start = new DateTime(y, m, 1, 0, 0, 0, DateTimeKind.Utc);
+            var end = start.AddMonths(1);
+
+            var acts = await _db.AuditLogs.AsNoTracking()
+                .Where(a => a.Action == "subscription.activated" && a.CreatedAt >= start && a.CreatedAt < end)
+                .ToListAsync(ct);
+
+            subscriptions[m - 1] = acts.Count;
+
+            long monthRevenueCentavos = 0;
+            foreach (var act in acts)
+            {
+                SubscriptionPlan plan = SubscriptionPlan.Free;
+                SubscriptionBillingCycle cycle = SubscriptionBillingCycle.Monthly;
+
+                if (!string.IsNullOrWhiteSpace(act.EntityId) && int.TryParse(act.EntityId, out var subId))
+                {
+                    var sub = await _db.CompanySubscriptions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == subId, ct);
+                    if (sub != null)
+                    {
+                        plan = sub.Plan;
+                        cycle = sub.BillingCycle;
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(act.Details))
+                {
+                    // Try to parse Plan=Pro
+                    var idx = act.Details.IndexOf("Plan=");
+                    if (idx >= 0)
+                    {
+                        var rest = act.Details.Substring(idx + 5);
+                        var token = rest.Split(' ', ';', ',').FirstOrDefault();
+                        if (Enum.TryParse<SubscriptionPlan>(token, true, out var p)) plan = p;
+                    }
+                }
+
+                var planDef = await _settings.GetPlanAsync(plan, ct);
+                var amount = cycle == SubscriptionBillingCycle.Annual ? planDef.AnnualPriceCentavos : planDef.MonthlyPriceCentavos;
+                monthRevenueCentavos += amount;
+            }
+
+            revenue[m - 1] = monthRevenueCentavos / 100.0;
+
+            // Approved users in the month (use audit logs for approvals)
+            var approvals = await _db.AuditLogs.AsNoTracking()
+                .Where(a => a.Action == "user.approve" && a.CreatedAt >= start && a.CreatedAt < end)
+                .CountAsync(ct);
+            approvedUsers[m - 1] = approvals;
+        }
+
+        var totalUsers = await _db.Users.AsNoTracking().CountAsync(u => !u.IsArchived, ct);
+
+        return Ok(new
+        {
+            labels = monthLabels,
+            revenue,
+            subscriptions,
+            approvedUsers,
+            totalUsers,
+            year = y
+        });
+    }
+
     [HttpGet("/superadmin/plans")]
     public async Task<IActionResult> Plans(CancellationToken ct)
     {

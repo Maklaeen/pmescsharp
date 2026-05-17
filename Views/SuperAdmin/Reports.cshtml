@@ -1,0 +1,103 @@
+@{
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h2>Superadmin Reports</h2>
+    <div class="mb-3">
+        <select id="selectYear" class="form-select" style="width:120px;display:inline-block"></select>
+        <button id="btnRefresh" class="btn btn-sm btn-primary ms-2">Refresh</button>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Revenue per month</h5>
+                    <canvas id="chartRevenue"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Subscriptions per month</h5>
+                    <canvas id="chartSubs"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Approved users per month</h5>
+                    <canvas id="chartUsers"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Total active users</h5>
+                    <div id="totalUsers" style="font-size:2rem;font-weight:600">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctxRev = document.getElementById('chartRevenue').getContext('2d');
+    const ctxSub = document.getElementById('chartSubs').getContext('2d');
+    const ctxUser = document.getElementById('chartUsers').getContext('2d');
+
+    let chartRev, chartSub, chartUser;
+
+    function initCharts(labels, revenue, subscriptions, approvedUsers) {
+        if (chartRev) chartRev.destroy();
+        if (chartSub) chartSub.destroy();
+        if (chartUser) chartUser.destroy();
+
+        chartRev = new Chart(ctxRev, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Revenue', data: revenue, borderColor: 'green', backgroundColor: 'rgba(0,128,0,0.1)' }] },
+            options: { responsive: true }
+        });
+
+        chartSub = new Chart(ctxSub, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Subscriptions', data: subscriptions, backgroundColor: 'blue' }] },
+            options: { responsive: true }
+        });
+
+        chartUser = new Chart(ctxUser, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Approved Users', data: approvedUsers, backgroundColor: 'purple' }] },
+            options: { responsive: true }
+        });
+    }
+
+    async function load(year) {
+        const res = await fetch('/superadmin/reports/data?year=' + year);
+        const data = await res.json();
+        initCharts(data.labels, data.revenue, data.subscriptions, data.approvedUsers);
+        document.getElementById('totalUsers').innerText = data.totalUsers;
+        document.getElementById('selectYear').value = data.year;
+    }
+
+    function fillYears() {
+        const sel = document.getElementById('selectYear');
+        const now = new Date().getFullYear();
+        for (let y = now - 4; y <= now; y++) {
+            const opt = document.createElement('option'); opt.value = y; opt.text = y; sel.appendChild(opt);
+        }
+    }
+
+    document.getElementById('btnRefresh').addEventListener('click', () => load(document.getElementById('selectYear').value));
+
+    fillYears();
+    load(new Date().getFullYear());
+</script>
