@@ -312,6 +312,23 @@
         .sk-table-header { height: 14px; width: 100%; border-radius: 6px; }
         .sk-row { height: 60px; border-radius: 14px; }
         .sk-row-sm { height: 44px; border-radius: 12px; }
+        /* Print styles */
+        .print-only { display: none; }
+        @@media print {
+            /* Hide UI chrome */
+            #sidebar, #sidebar-overlay, header, .sidebar-link, .no-print, .page-loader, .sk-header, .sk-subheader { display: none !important; }
+            /* Ensure main content uses full width */
+            .flex.h-screen.overflow-hidden { display: block !important; }
+            main, .flex-1.flex.flex-col.min-w-0 { margin-left: 0 !important; padding: 0.5in !important; background: white !important; color: #111 !important; }
+            body, html { background: white !important; color: #111 !important; }
+            /* Improve color printing */
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            /* Show print header only */
+            .print-only { display: block !important; margin-bottom: 12px; text-align: center; color: #111; }
+            .print-only .title { font-size: 16px; font-weight: 700; }
+            /* Tables: ensure borders are visible */
+            table { border-collapse: collapse !important; }
+        }
     </style>
 
     <script>

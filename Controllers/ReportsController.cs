@@ -11,11 +11,19 @@ public class ReportsController : Controller
 {
     private readonly AppDbContext _db;
     private readonly ICurrentCompany _currentCompany;
+    private readonly PmesCSharp.Services.PdfService _pdf;
 
     public ReportsController(AppDbContext db, ICurrentCompany currentCompany)
     {
         _db = db;
         _currentCompany = currentCompany;
+    }
+
+    public ReportsController(AppDbContext db, ICurrentCompany currentCompany, PmesCSharp.Services.PdfService pdf)
+    {
+        _db = db;
+        _currentCompany = currentCompany;
+        _pdf = pdf;
     }
 
     [HttpGet("/reports")]
@@ -70,6 +78,15 @@ public class ReportsController : Controller
         return View(costs);
     }
 
+    [HttpGet("/reports/costing/pdf")]
+    public async Task<IActionResult> CostingPdf([FromQuery] string? from, [FromQuery] string? to, CancellationToken ct)
+    {
+        var result = await Costing(from, to, ct) as ViewResult;
+        var html = await _pdf.RenderViewToStringAsync(this, "Costing", result?.Model ?? new List<object>());
+        var bytes = await _pdf.GeneratePdfFromHtmlAsync(html);
+        return File(bytes, "application/pdf", "costing-report.pdf");
+    }
+
     [HttpGet("/reports/quality")]
     public async Task<IActionResult> Quality([FromQuery] string? from, [FromQuery] string? to, CancellationToken ct)
     {
@@ -94,5 +111,14 @@ public class ReportsController : Controller
         ViewBag.PassRate = Math.Round(passRate, 1);
 
         return View(checks);
+    }
+
+    [HttpGet("/reports/quality/pdf")]
+    public async Task<IActionResult> QualityPdf([FromQuery] string? from, [FromQuery] string? to, CancellationToken ct)
+    {
+        var result = await Quality(from, to, ct) as ViewResult;
+        var html = await _pdf.RenderViewToStringAsync(this, "Quality", result?.Model ?? new List<object>());
+        var bytes = await _pdf.GeneratePdfFromHtmlAsync(html);
+        return File(bytes, "application/pdf", "quality-report.pdf");
     }
 }

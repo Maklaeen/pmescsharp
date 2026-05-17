@@ -62,6 +62,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<IPasswordHasher<ApplicationUser>, PmesCSharp.Services.BcryptPasswordHasher>();
+builder.Services.AddScoped<PmesCSharp.Services.PdfService>();
 
 var google = builder.Configuration.GetSection("Authentication:Google");
 var googleClientId = google["ClientId"];

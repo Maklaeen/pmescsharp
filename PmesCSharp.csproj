@@ -23,5 +23,8 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="PuppeteerSharp" Version="8.0.0" />
+  </ItemGroup>
 
 </Project>
