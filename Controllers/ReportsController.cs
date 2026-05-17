@@ -13,12 +13,6 @@ public class ReportsController : Controller
     private readonly ICurrentCompany _currentCompany;
     private readonly PmesCSharp.Services.PdfService _pdf;
 
-    public ReportsController(AppDbContext db, ICurrentCompany currentCompany)
-    {
-        _db = db;
-        _currentCompany = currentCompany;
-    }
-
     public ReportsController(AppDbContext db, ICurrentCompany currentCompany, PmesCSharp.Services.PdfService pdf)
     {
         _db = db;
