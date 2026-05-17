@@ -13,11 +13,13 @@ public class SuperAdminController : Controller
 {
     private readonly AppDbContext _db;
     private readonly IAuditLogger _audit;
+    private readonly PmesCSharp.Services.SubscriptionSettingsService _settings;
 
-    public SuperAdminController(AppDbContext db, IAuditLogger audit)
+    public SuperAdminController(AppDbContext db, IAuditLogger audit, PmesCSharp.Services.SubscriptionSettingsService settings)
     {
         _db = db;
         _audit = audit;
+        _settings = settings;
     }
 
     [HttpGet("/superadmin/plans")]
@@ -229,5 +231,72 @@ public class SuperAdminController : Controller
 
         TempData["Success"] = "Subscription canceled and downgraded to Free.";
         return Redirect("/superadmin/subscriptions");
+    }
+
+    [HttpGet("/superadmin/reports/subscriptions")]
+    public async Task<IActionResult> SubscriptionReports([FromQuery] int? year, [FromQuery] int? month, CancellationToken ct)
+    {
+        var y = year ?? DateTime.UtcNow.Year;
+        var m = month ?? DateTime.UtcNow.Month;
+        var start = new DateTime(y, m, 1, 0, 0, 0, DateTimeKind.Utc);
+        var end = start.AddMonths(1);
+
+        // Use audit logs for activation events when available
+        var activations = await _db.AuditLogs
+            .AsNoTracking()
+            .Where(a => a.Action == "subscription.activated" && a.CreatedAt >= start && a.CreatedAt < end)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync(ct);
+
+        var totalSubscriptions = activations.Count;
+
+        long totalRevenueCentavos = 0;
+        var items = new List<dynamic>();
+
+        foreach (var act in activations)
+        {
+            int subId = 0;
+            if (!string.IsNullOrWhiteSpace(act.EntityId) && int.TryParse(act.EntityId, out var parsed)) subId = parsed;
+
+            CompanySubscription? sub = null;
+            if (subId > 0)
+                sub = await _db.CompanySubscriptions.AsNoTracking().Include(s => s.Company).FirstOrDefaultAsync(s => s.Id == subId, ct);
+
+            // Fallback: try to find by company and created/updated date
+            if (sub is null && !string.IsNullOrWhiteSpace(act.Details))
+            {
+                // details often contains "Plan=Pro" etc. Skip complex parsing for now
+            }
+
+            long amount = 0;
+            string currency = "PHP";
+            SubscriptionPlan plan = SubscriptionPlan.Free;
+            var cycle = SubscriptionBillingCycle.Monthly;
+
+            if (sub is not null)
+            {
+                plan = sub.Plan;
+                cycle = sub.BillingCycle;
+            }
+
+            var planDef = await _settings.GetPlanAsync(plan, ct);
+            currency = planDef.Currency ?? "PHP";
+            amount = cycle == SubscriptionBillingCycle.Annual ? planDef.AnnualPriceCentavos : planDef.MonthlyPriceCentavos;
+
+            totalRevenueCentavos += amount;
+
+            items.Add(new { ActivatedAt = act.CreatedAt, CompanySubscription = sub, Plan = plan, BillingCycle = cycle, AmountCentavos = amount, Currency = currency });
+        }
+
+        var usersCount = await _db.Users.AsNoTracking().CountAsync(u => !u.IsArchived, ct);
+
+        ViewBag.Year = y;
+        ViewBag.Month = m;
+        ViewBag.TotalSubscriptions = totalSubscriptions;
+        ViewBag.TotalRevenueCentavos = totalRevenueCentavos;
+        ViewBag.Currency = "PHP";
+        ViewBag.UsersCount = usersCount;
+
+        return View(items);
     }
 }

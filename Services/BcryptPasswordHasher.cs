@@ -18,7 +18,7 @@ public class BcryptPasswordHasher : IPasswordHasher<ApplicationUser>
                 : PasswordVerificationResult.Failed;
         }
 
-        // Fallback: PBKDF2 (legacy) — rehash on next login
+
         var legacy = new PasswordHasher<ApplicationUser>();
         var result = legacy.VerifyHashedPassword(user, hashedPassword, providedPassword);
         return result == PasswordVerificationResult.Success

@@ -32,6 +32,18 @@ public class SubscriptionController : Controller
         _email = email;
     }
 
+    [HttpGet("/subscription/receipt")]
+    public async Task<IActionResult> Receipt([FromQuery] int subscriptionId, CancellationToken ct)
+    {
+        var sub = await _db.CompanySubscriptions.Include(s => s.Company).FirstOrDefaultAsync(s => s.Id == subscriptionId, ct);
+        if (sub is null) return NotFound();
+        var planDef = await _settings.GetPlanAsync(sub.Plan, ct);
+        var amount = sub.BillingCycle == SubscriptionBillingCycle.Annual ? planDef.AnnualPriceCentavos : planDef.MonthlyPriceCentavos;
+        ViewBag.AmountCentavos = amount;
+        ViewBag.Currency = planDef.Currency ?? "PHP";
+        return View(sub);
+    }
+
     [HttpGet("/subscription")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -252,7 +264,9 @@ public class SubscriptionController : Controller
         HttpContext.Session.Remove("paymongo_checkout_url");
 
         TempData["Success"] = $"You're now on the {plan} plan!";
-        return Redirect("/subscription");
+
+        // Redirect to receipt page so user can print/save as PDF
+        return Redirect($"/subscription/receipt?subscriptionId={sub.Id}");
     }
 
     [HttpPost("/subscription/trial")]

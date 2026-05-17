@@ -1,0 +1,32 @@
+@model PmesCSharp.Models.CompanySubscription
+@{
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Subscription Receipt</h2>
+        <div>
+            <a class="btn btn-secondary" href="#" onclick="window.print();return false;">Print / Save as PDF</a>
+            <a class="btn btn-link" href="/subscription">Back to Subscription</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h5>Company</h5>
+            <p>@Model.Company?.Name ?? "-"</p>
+
+            <h5>Plan</h5>
+            <p>@Model.Plan (@Model.BillingCycle)</p>
+
+            <h5>Amount</h5>
+            <p>@(((long)ViewBag.AmountCentavos / 100.0).ToString("C2")) @ViewBag.Currency</p>
+
+            <h5>Activated At</h5>
+            <p>@Model.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</p>
+
+            <p class="text-muted" style="font-size:0.9rem">This is an automatically generated receipt. Use the print button to save as PDF.</p>
+        </div>
+    </div>
+</div>
