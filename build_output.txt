@@ -1,0 +1,23 @@
+  Determining projects to restore...
+c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj : warning NU1603: PmesCSharp depends on Stripe.net (>= 47.6.0) but Stripe.net 47.6.0 was not found. Stripe.net 48.0.0 was resolved instead. [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.sln]
+  All projects are up-to-date for restore.
+c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj : warning NU1603: PmesCSharp depends on Stripe.net (>= 47.6.0) but Stripe.net 47.6.0 was not found. Stripe.net 48.0.0 was resolved instead.
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(42,27): error CS0246: The type or namespace name 'SessionCreateOptions' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(50,21): error CS0246: The type or namespace name 'SessionLineItemOptions' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(53,37): error CS0246: The type or namespace name 'SessionLineItemPriceDataOptions' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(57,43): error CS0246: The type or namespace name 'SessionLineItemPriceDataProductDataOptions' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(73,27): error CS0246: The type or namespace name 'SessionService' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+
+Build FAILED.
+
+c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj : warning NU1603: PmesCSharp depends on Stripe.net (>= 47.6.0) but Stripe.net 47.6.0 was not found. Stripe.net 48.0.0 was resolved instead. [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.sln]
+c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj : warning NU1603: PmesCSharp depends on Stripe.net (>= 47.6.0) but Stripe.net 47.6.0 was not found. Stripe.net 48.0.0 was resolved instead.
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(42,27): error CS0246: The type or namespace name 'SessionCreateOptions' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(50,21): error CS0246: The type or namespace name 'SessionLineItemOptions' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(53,37): error CS0246: The type or namespace name 'SessionLineItemPriceDataOptions' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(57,43): error CS0246: The type or namespace name 'SessionLineItemPriceDataProductDataOptions' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+c:\Users\lubia\source\repos\PmesCSharp\Services\StripePaymentService.cs(73,27): error CS0246: The type or namespace name 'SessionService' could not be found (are you missing a using directive or an assembly reference?) [c:\Users\lubia\source\repos\PmesCSharp\PmesCSharp.csproj]
+    2 Warning(s)
+    5 Error(s)
+
+Time Elapsed 00:00:04.57

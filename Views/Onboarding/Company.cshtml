@@ -1,0 +1,84 @@
+@model PmesCSharp.ViewModels.Company.CompanyProfileViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Setup Company Profile";
+    var companyName = ViewBag.CompanyName as string ?? "Your Company";
+}
+
+<div class="max-w-2xl mx-auto">
+    <!-- Progress -->
+    <div class="flex items-center gap-3 mb-8">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-black">1</div>
+            <span class="text-sm font-bold text-white">Company Profile</span>
+        </div>
+        <div class="flex-1 h-px bg-white/[0.08]"></div>
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center text-gray-500 text-xs font-black">2</div>
+            <span class="text-sm font-bold text-gray-500">Your Profile</span>
+        </div>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="mb-6">
+            <h2 class="text-xl font-extrabold text-white tracking-tight">Set up your company</h2>
+            <p class="text-sm text-gray-500 mt-1">Tell us about <span class="text-orange-400 font-semibold">@companyName</span>. You can update this anytime.</p>
+        </div>
+
+        <form method="post" action="/onboarding/company" class="space-y-5">
+            @Html.AntiForgeryToken()
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Company Display Name <span class="text-orange-400">*</span></label>
+                <input type="text" name="DisplayName" value="@Model.DisplayName" required
+                       class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                       placeholder="e.g. Inkforge Solutions">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Business Email</label>
+                    <input type="email" name="Email" value="@Model.Email"
+                           class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                           placeholder="company@email.com">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Phone</label>
+                    <input type="tel" name="Phone" value="@Model.Phone"
+                           class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                           placeholder="+63 9XX XXX XXXX">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Address</label>
+                <input type="text" name="Address" value="@Model.Address"
+                       class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                       placeholder="Street, City, Province">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Industry</label>
+                    <input type="text" name="Industry" value="@Model.Industry"
+                           class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                           placeholder="e.g. Garments & Printing">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Website</label>
+                    <input type="text" name="Website" value="@Model.Website"
+                           class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                           placeholder="https://yoursite.com">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+                <a href="/admin" class="text-sm text-gray-500 hover:text-gray-300 transition">Skip for now</a>
+                <button type="submit"
+                        class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
+                    Continue →
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

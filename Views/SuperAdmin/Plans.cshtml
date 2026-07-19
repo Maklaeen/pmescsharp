@@ -1,0 +1,124 @@
+@model List<PmesCSharp.Models.SubscriptionPlanDefinition>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Plan Management";
+    var free = Model.FirstOrDefault(p => p.Plan == PmesCSharp.Models.SubscriptionPlan.Free);
+    var pro = Model.FirstOrDefault(p => p.Plan == PmesCSharp.Models.SubscriptionPlan.Pro);
+}
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@ok</div>
+}
+
+<div class="max-w-5xl space-y-6">
+
+    <div class="flex items-center justify-between">
+        <div>
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Superadmin</div>
+            <h2 class="text-xl font-extrabold text-white tracking-tight mt-1">Subscription Plans</h2>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="/superadmin/billing-settings"
+               class="px-4 py-2 text-sm font-bold text-gray-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] rounded-xl transition-all">
+                Billing Settings
+            </a>
+            <a href="/superadmin/subscriptions"
+               class="px-4 py-2 text-sm font-bold text-gray-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] rounded-xl transition-all">
+                Company Subscriptions
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Free Plan Card-->
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <div class="w-10 h-10 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 mb-4">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    </div>
+                    <div class="text-lg font-black text-white">Free</div>
+                    <div class="text-3xl font-black text-white mt-1">
+                        ₱@((free?.MonthlyPriceCentavos ?? 0) / 100)
+                        <span class="text-sm font-normal text-gray-500">/mo</span>
+                    </div>
+                </div>
+                <a href="/superadmin/plans/Free"
+                   class="px-4 py-2 text-xs font-bold bg-white/[0.05] hover:bg-white/[0.1] text-gray-300 rounded-xl border border-white/[0.08] transition-all">
+                    Edit
+                </a>
+            </div>
+            <div class="space-y-3 text-sm">
+                @foreach (var item in new[]
+                {
+                    new { Label = "Max Users", Value = free?.MaxUsers == 0 ? "Unlimited" : (free?.MaxUsers.ToString("N0") ?? "50") },
+                    new { Label = "Max Products", Value = free?.MaxProducts == 0 ? "Unlimited" : (free?.MaxProducts.ToString("N0") ?? "500") },
+                    new { Label = "Max Materials", Value = free?.MaxMaterials == 0 ? "Unlimited" : (free?.MaxMaterials.ToString("N0") ?? "500") },
+                    new { Label = "Work Orders/Month", Value = free?.MaxWorkOrdersPerMonth == 0 ? "Unlimited" : (free?.MaxWorkOrdersPerMonth.ToString("N0") ?? "1,000") },
+                    new { Label = "Reports", Value = (free?.EnableReports ?? true) ? "✓ Enabled" : "✗ Disabled" },
+                    new { Label = "Costing", Value = (free?.EnableCosting ?? true) ? "✓ Enabled" : "✗ Disabled" },
+                    new { Label = "Audit Logs", Value = (free?.EnableAuditLogs ?? true) ? "✓ Enabled" : "✗ Disabled" },
+                })
+                {
+                    <div class="flex items-center justify-between py-2 border-b border-white/[0.04]">
+                        <span class="text-gray-500">@item.Label</span>
+                        <span class="text-white font-semibold">@item.Value</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Pro Plan Card-->
+        <div class="bg-[#111114] border border-orange-500/30 rounded-[24px] p-8 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <div class="w-10 h-10 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center text-orange-400 mb-4">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="text-lg font-black text-white">Pro</div>
+                        <span class="text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">Popular</span>
+                    </div>
+                    <div class="text-3xl font-black text-white mt-1">
+                        ₱@((pro?.MonthlyPriceCentavos ?? 490000) / 100)
+                        <span class="text-sm font-normal text-gray-500">/mo</span>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        ₱@((pro?.AnnualPriceCentavos ?? (int)Math.Round(490000 * 12 * 0.9)) / 100)/yr annual
+                    </div>
+                </div>
+                <a href="/superadmin/plans/Pro"
+                   class="px-4 py-2 text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-all">
+                    Edit
+                </a>
+            </div>
+            <div class="space-y-3 text-sm">
+                @foreach (var item in new[]
+                {
+                    new { Label = "Max Users", Value = pro?.MaxUsers == 0 ? "Unlimited" : (pro?.MaxUsers.ToString("N0") ?? "Unlimited") },
+                    new { Label = "Max Products", Value = pro?.MaxProducts == 0 ? "Unlimited" : (pro?.MaxProducts.ToString("N0") ?? "Unlimited") },
+                    new { Label = "Max Materials", Value = pro?.MaxMaterials == 0 ? "Unlimited" : (pro?.MaxMaterials.ToString("N0") ?? "Unlimited") },
+                    new { Label = "Work Orders/Month", Value = pro?.MaxWorkOrdersPerMonth == 0 ? "Unlimited" : (pro?.MaxWorkOrdersPerMonth.ToString("N0") ?? "Unlimited") },
+                    new { Label = "Reports", Value = (pro?.EnableReports ?? true) ? "✓ Enabled" : "✗ Disabled" },
+                    new { Label = "Costing", Value = (pro?.EnableCosting ?? true) ? "✓ Enabled" : "✗ Disabled" },
+                    new { Label = "Audit Logs", Value = (pro?.EnableAuditLogs ?? true) ? "✓ Enabled" : "✗ Disabled" },
+                })
+                {
+                    <div class="flex items-center justify-between py-2 border-b border-white/[0.04]">
+                        <span class="text-gray-500">@item.Label</span>
+                        <span class="text-white font-semibold">@item.Value</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-5">
+        <div class="text-xs text-gray-500">
+            <span class="font-bold text-gray-400">Note:</span> Set Max to <span class="text-orange-400 font-bold">0</span> for unlimited. Prices are in centavos (e.g. ₱4,900 = 490000 centavos).
+        </div>
+    </div>
+</div>

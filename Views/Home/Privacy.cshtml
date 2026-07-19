@@ -1,0 +1,97 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy – PMES</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+
+    <nav class="border-b border-gray-200 dark:border-gray-800/70 bg-white/60 dark:bg-gray-950/60 backdrop-blur px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <a href="/" class="flex items-center gap-3">
+                <img src="/images/LOGO.png" alt="PMES Logo" class="h-8 w-auto sm:h-10 object-contain" />
+                <span class="font-extrabold text-lg sm:text-xl text-gray-900 dark:text-white tracking-tight">PMES</span>
+            </a>
+
+            <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-400">
+                <a href="/#home" class="hover:text-gray-900 dark:hover:text-white transition">Home</a>
+                <a href="/#features" class="hover:text-gray-900 dark:hover:text-white transition">Features</a>
+                <a href="/#overview" class="hover:text-gray-900 dark:hover:text-white transition">Overview</a>
+                <a href="/privacy" class="text-gray-900 dark:text-white">Privacy</a>
+            </div>
+
+            <div class="flex items-center gap-3">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a href="/dashboard" class="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition">Dashboard</a>
+                }
+                else
+                {
+                    <a href="/login" class="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition">Sign In</a>
+                    <a href="/register" class="text-sm bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition font-semibold">Get Started</a>
+                }
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-6 py-14">
+        <div class="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 text-orange-500 dark:text-orange-400 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+            Privacy Policy
+        </div>
+
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">Privacy Policy</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-4">
+            This page explains how PMES collects, uses, and protects information when you use the system.
+        </p>
+
+        <div class="mt-10 space-y-8">
+            <section class="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Information We Collect</h2>
+                <p class="text-gray-600 dark:text-gray-400 mt-2">
+                    PMES may collect account details (such as name and email), operational data you enter into the system (such as products, materials, schedules, work orders, inspections), and technical data (such as device/browser information) needed for security and reliability.
+                </p>
+            </section>
+
+            <section class="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white">How We Use Information</h2>
+                <p class="text-gray-600 dark:text-gray-400 mt-2">
+                    We use information to operate core features, authenticate users, maintain auditability, improve performance, and provide support. PMES does not sell your personal information.
+                </p>
+            </section>
+
+            <section class="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Data Security</h2>
+                <p class="text-gray-600 dark:text-gray-400 mt-2">
+                    We apply reasonable administrative and technical safeguards. No method of transmission or storage is 100% secure, but we aim to protect information from unauthorized access.
+                </p>
+            </section>
+
+            <section class="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Contact</h2>
+                <p class="text-gray-600 dark:text-gray-400 mt-2">
+                    If you have questions about this Privacy Policy, please contact your system administrator.
+                </p>
+            </section>
+
+            <p class="text-xs text-gray-500 dark:text-gray-500">
+                Effective date: @DateTime.Now.ToString("MMMM dd, yyyy")
+            </p>
+        </div>
+    </main>
+
+    <footer class="border-t border-gray-200 dark:border-gray-800/70 px-6 py-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-500">
+            <p>&copy; @DateTime.Now.Year PMES — Production &amp; Manufacturing Execution System</p>
+            <a href="/privacy" class="hover:text-gray-900 dark:hover:text-white transition">Privacy Policy</a>
+        </div>
+    </footer>
+
+</body>
+</html>

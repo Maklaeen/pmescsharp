@@ -1,0 +1,28 @@
+@using Microsoft.AspNetCore.Identity
+@using PmesCSharp.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+<ul class="navbar-nav">
+@if (SignInManager.IsSignedIn(User))
+{
+    <li class="nav-item">
+        <a class="nav-link text-dark" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+    </li>
+    <li class="nav-item">
+        <form class="d-inline" asp-controller="Account" asp-action="Logout" method="post">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="nav-link btn btn-link text-dark p-0" style="text-decoration:none;">Logout</button>
+        </form>
+    </li>
+}
+else
+{
+    <li class="nav-item">
+        <a class="nav-link text-dark" href="/login">Login</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark" href="/register">Register</a>
+    </li>
+}
+</ul>

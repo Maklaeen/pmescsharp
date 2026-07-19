@@ -1,0 +1,136 @@
+@{
+    Layout = "_AdminLayout";
+}
+
+<div class="container mt-4" id="reportContent">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Superadmin Reports</h2>
+        <div>
+            <select id="selectYear" class="form-select d-inline-block" style="width:120px"></select>
+            <button id="btnRefresh" class="btn btn-sm btn-primary ms-2">Refresh</button>
+            <button id="btnPrint" class="btn btn-sm btn-secondary ms-2" onclick="window.print();">Print</button>
+            <button id="btnPdf" class="btn btn-sm btn-success ms-2">Generate PDF</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Revenue per month</h5>
+                    <canvas id="chartRevenue"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Subscriptions per month</h5>
+                    <canvas id="chartSubs"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Approved users per month</h5>
+                    <canvas id="chartUsers"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Total active users</h5>
+                    <canvas id="chartTotalUsers" style="max-height:220px"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+<script>
+    const ctxRev = document.getElementById('chartRevenue').getContext('2d');
+    const ctxSub = document.getElementById('chartSubs').getContext('2d');
+    const ctxUser = document.getElementById('chartUsers').getContext('2d');
+    const ctxTotal = document.getElementById('chartTotalUsers').getContext('2d');
+
+    let chartRev, chartSub, chartUser, chartTotal;
+
+    function initCharts(labels, revenue, subscriptions, approvedUsers, totalUsers) {
+        if (chartRev) chartRev.destroy();
+        if (chartSub) chartSub.destroy();
+        if (chartUser) chartUser.destroy();
+        if (chartTotal) chartTotal.destroy();
+
+        chartRev = new Chart(ctxRev, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Revenue', data: revenue, borderColor: 'green', backgroundColor: 'rgba(0,128,0,0.08)', fill: true }] },
+            options: { responsive: true }
+        });
+
+        chartSub = new Chart(ctxSub, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Subscriptions', data: subscriptions, backgroundColor: 'rgba(59,130,246,0.8)' }] },
+            options: { responsive: true }
+        });
+
+        chartUser = new Chart(ctxUser, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Approved Users', data: approvedUsers, backgroundColor: 'rgba(124,58,237,0.8)' }] },
+            options: { responsive: true }
+        });
+
+        chartTotal = new Chart(ctxTotal, {
+            type: 'doughnut',
+            data: { labels: ['Active Users', ''], datasets: [{ data: [totalUsers, 1], backgroundColor: ['#10b981', '#e5e7eb'] }] },
+            options: { responsive: true, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+        });
+    }
+
+    async function load(year) {
+        const res = await fetch('/superadmin/reports/data?year=' + year);
+        const data = await res.json();
+        initCharts(data.labels, data.revenue, data.subscriptions, data.approvedUsers, data.totalUsers);
+        document.getElementById('selectYear').value = data.year;
+    }
+
+    function fillYears() {
+        const sel = document.getElementById('selectYear');
+        const now = new Date().getFullYear();
+        for (let y = now - 4; y <= now; y++) {
+            const opt = document.createElement('option'); opt.value = y; opt.text = y; sel.appendChild(opt);
+        }
+    }
+
+    document.getElementById('btnRefresh').addEventListener('click', () => load(document.getElementById('selectYear').value));
+
+    document.getElementById('btnPdf').addEventListener('click', async function () {
+        const btn = this; btn.disabled = true; btn.innerText = 'Generating...';
+        try {
+            const element = document.getElementById('reportContent');
+            const year = document.getElementById('selectYear').value || new Date().getFullYear();
+            const opt = {
+                margin: 0.5,
+                filename: `PMES-Report-${year}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+            };
+            await html2pdf().set(opt).from(element).save();
+        } catch (e) {
+            console.error(e);
+            alert('PDF generation failed.');
+        } finally {
+            btn.disabled = false; btn.innerText = 'Generate PDF';
+        }
+    });
+
+    fillYears();
+    load(new Date().getFullYear());
+</script>

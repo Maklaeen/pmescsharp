@@ -1,0 +1,142 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PmesCSharp.Data;
+using PmesCSharp.Models;
+using PmesCSharp.ViewModels.Account;
+
+namespace PmesCSharp.Controllers;
+
+[AllowAnonymous]
+public class JoinController : Controller
+{
+    private readonly AppDbContext _db;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+
+    private readonly PmesCSharp.Services.EmailService _email;
+
+    public JoinController(AppDbContext db, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, PmesCSharp.Services.EmailService email)
+    {
+        _db = db;
+        _userManager = userManager;
+        _signInManager = signInManager;
+        _email = email;
+    }
+
+    [HttpGet("/join/{token}")]
+    public async Task<IActionResult> Accept(string token)
+    {
+        var tokenHash = HashToken(token);
+        var now = DateTime.UtcNow;
+
+        var invite = await _db.Set<CompanyInvite>()
+            .FirstOrDefaultAsync(i => i.TokenHash == tokenHash && i.RevokedAt == null && i.ExpiresAt > now && i.UsesCount < i.MaxUses);
+
+        if (invite is null)
+        {
+            TempData["Error"] = "This invitation is invalid or has expired.";
+            return Redirect("/login");
+        }
+
+        var vm = new RegisterViewModel { Email = invite.InvitedEmail };
+        ViewBag.Token = token;
+        ViewBag.Role = invite.Role;
+        return View(vm);
+    }
+
+    [HttpGet("/join/pending")]
+    public IActionResult Pending()
+    {
+        return View();
+    }
+
+    [HttpPost("/join/{token}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AcceptPost(string token, RegisterViewModel model)
+    {
+        var tokenHash = HashToken(token);
+        var now = DateTime.UtcNow;
+
+        var invite = await _db.Set<CompanyInvite>()
+            .FirstOrDefaultAsync(i => i.TokenHash == tokenHash && i.RevokedAt == null && i.ExpiresAt > now && i.UsesCount < i.MaxUses);
+
+        if (invite is null)
+        {
+            TempData["Error"] = "This invitation is invalid or has expired.";
+            return Redirect("/login");
+        }
+
+        ViewBag.Token = token;
+        ViewBag.Role = invite.Role;
+
+        ModelState.Remove(nameof(model.CompanyName));
+        if (!ModelState.IsValid) return View("Accept", model);
+
+        var existing = await _userManager.FindByEmailAsync(invite.InvitedEmail);
+        if (existing is not null)
+        {
+            if (!existing.IsApproved)
+            {
+                TempData["Status"] = "Your account is already created. Please wait for admin approval.";
+                return Redirect("/join/pending");
+            }
+
+            ModelState.AddModelError(string.Empty, "An account with this email already exists.");
+            return View("Accept", model);
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = invite.InvitedEmail,
+            Email = invite.InvitedEmail,
+            FullName = model.Name,
+            EmailConfirmed = false,
+            CompanyId = invite.CompanyId,
+            IsApproved = false,
+            ApprovedAt = null,
+            PendingRole = invite.Role,
+        };
+
+        var result = await _userManager.CreateAsync(user, model.Password);
+        if (!result.Succeeded)
+        {
+            foreach (var e in result.Errors)
+                ModelState.AddModelError(string.Empty, e.Description);
+            return View("Accept", model);
+        }
+
+        invite.UsesCount++;
+        invite.ConsumedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        try
+        {
+            var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encoded = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(emailToken));
+            var confirmUrl = Url.Action("ConfirmEmail", "Profile", new { userId = user.Id, token = encoded }, Request.Scheme);
+
+            await _email.SendAsync(
+                user.Email!,
+                "Verify your PMES email",
+                $"""<p>Hi {System.Net.WebUtility.HtmlEncode(user.FullName ?? user.Email)},</p><p>Please verify your email by clicking the link below:</p><p><a href=\"{confirmUrl}\">Verify Email</a></p><p>If you did not create this account, you can ignore this email.</p>"""
+            );
+        }
+        catch
+        {
+            // Don't block join flow if email sending fails.
+        }
+
+        TempData["Status"] = "Registration successful. Please wait for admin approval before logging in.";
+        return Redirect("/join/pending");
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(bytes);
+    }
+}

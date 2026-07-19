@@ -1,0 +1,33 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="flex items-center justify-center min-h-[60vh]">
+    <div class="text-center max-w-md">
+        <div class="w-20 h-20 bg-yellow-500/10 border border-yellow-500/20 rounded-3xl flex items-center justify-center text-yellow-400 mx-auto mb-6">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-black text-white tracking-tight mb-2">No Role Assigned</h2>
+        <p class="text-gray-500 text-sm mb-8">Your account is active but no role has been assigned yet. Please contact your administrator.</p>
+
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-6 text-left">
+            <div class="text-xs font-bold text-gray-600 uppercase tracking-[0.2em] mb-3">Available Roles</div>
+            <div class="flex flex-wrap gap-2">
+                @foreach (var role in new[] { "superadmin", "admin", "planner", "inventory", "operator", "qc" })
+                {
+                    <span class="text-[10px] font-bold text-orange-500 uppercase tracking-widest bg-orange-500/5 px-2.5 py-1 rounded-lg border border-orange-500/10">@role</span>
+                }
+            </div>
+        </div>
+
+        <form method="post" action="/logout" class="mt-6">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="text-sm text-gray-500 hover:text-red-400 transition">
+                Sign out and try a different account
+            </button>
+        </form>
+    </div>
+</div>

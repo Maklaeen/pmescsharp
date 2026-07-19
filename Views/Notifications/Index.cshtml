@@ -1,0 +1,68 @@
+@model IEnumerable<PmesCSharp.Models.Notification>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Notifications";
+}
+
+<div class="max-w-3xl space-y-4">
+    <div class="flex items-center justify-between">
+        <p class="text-sm text-gray-500">@Model.Count() notification(s)</p>
+        @if (Model.Any())
+        {
+            <form method="post" action="/notifications/read-all">
+                @Html.AntiForgeryToken()
+                <button class="text-xs font-bold text-orange-500 hover:text-orange-400 uppercase tracking-widest">Mark All Read</button>
+            </form>
+        }
+    </div>
+
+    @if (TempData["Success"] is string success)
+    {
+        <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-12 text-center">
+            <div class="text-gray-600 text-sm">No notifications yet.</div>
+        </div>
+    }
+    else
+    {
+        <div class="space-y-2">
+            @foreach (var n in Model)
+            {
+                var borderClass = n.Type switch
+                {
+                    "success" => "border-emerald-500/20",
+                    "warning" => "border-yellow-500/20",
+                    "error"   => "border-red-500/20",
+                    _         => "border-white/[0.05]"
+                };
+                var dotClass = n.Type switch
+                {
+                    "success" => "bg-emerald-500",
+                    "warning" => "bg-yellow-500",
+                    "error"   => "bg-red-500",
+                    _         => "bg-blue-500"
+                };
+                <div class="flex items-start gap-4 bg-[#111114] border @borderClass rounded-2xl px-6 py-4 @(n.IsRead ? "opacity-60" : "")">
+                    <div class="mt-1.5 w-2 h-2 rounded-full flex-shrink-0 @dotClass @(n.IsRead ? "opacity-40" : "")"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm text-gray-200">
+                            @if (!string.IsNullOrEmpty(n.Link))
+                            {
+                                <a href="@n.Link" class="hover:text-white transition-colors">@n.Message</a>
+                            }
+                            else
+                            {
+                                @n.Message
+                            }
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1">@n.CreatedAt.ToString("MMM dd, yyyy HH:mm")</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

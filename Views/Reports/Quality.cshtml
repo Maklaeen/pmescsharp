@@ -1,0 +1,116 @@
+@model List<PmesCSharp.Models.QualityCheck>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Quality Report";
+    string from = ViewBag.From;
+    string to = ViewBag.To;
+    int totalInspections = ViewBag.TotalInspections;
+    int passed = ViewBag.Passed;
+    int failed = ViewBag.Failed;
+    int totalQtyPassed = ViewBag.TotalQtyPassed;
+    int totalQtyFailed = ViewBag.TotalQtyFailed;
+    double passRate = ViewBag.PassRate;
+}
+
+<div class="space-y-6">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-6 no-print">
+        <form method="get" action="/reports/quality" class="flex items-end gap-4 flex-wrap">
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">From</label>
+                <input type="date" name="from" value="@from" class="bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">To</label>
+                <input type="date" name="to" value="@to" class="bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <button type="submit" class="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all">Apply</button>
+            <a href="/reports" class="px-5 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">← Back</a>
+        </form>
+    </div>
+
+    <div class="print-only">
+        <div class="text-xs text-gray-600">@DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm")</div>
+        <div class="title">Quality Report — @from to @to</div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Total Inspections</div>
+            <div class="text-2xl font-black text-white">@totalInspections</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Passed</div>
+            <div class="text-2xl font-black text-emerald-400">@passed</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Failed</div>
+            <div class="text-2xl font-black text-red-400">@failed</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Pass Rate</div>
+            <div class="text-2xl font-black @(passRate >= 90 ? "text-emerald-400" : passRate >= 70 ? "text-orange-400" : "text-red-400")">@passRate%</div>
+        </div>
+        <div class="bg-[#111114] border border-white/[0.05] rounded-2xl p-5">
+            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest mb-2">Qty Passed</div>
+            <div class="text-2xl font-black text-emerald-400">@totalQtyPassed.ToString("N0")</div>
+        </div>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <h3 class="text-lg font-bold text-white mb-6">QC Inspections — @from to @to</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-separate border-spacing-y-2">
+                <thead>
+                    <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                        <th class="px-4 py-3">Schedule</th>
+                        <th class="px-4 py-3">Product</th>
+                        <th class="px-4 py-3">Result</th>
+                        <th class="px-4 py-3">Qty Passed</th>
+                        <th class="px-4 py-3">Qty Failed</th>
+                        <th class="px-4 py-3">Inspected By</th>
+                        <th class="px-4 py-3">Inspected At</th>
+                        <th class="px-4 py-3">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="8" class="px-4 py-10 text-sm text-gray-500">No QC inspections found for this period.</td></tr>
+                    }
+                    @foreach (var q in Model)
+                    {
+                        var resultClass = q.Result == "passed"
+                            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                            : "text-red-400 bg-red-500/10 border-red-500/20";
+                        <tr class="bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                            <td class="px-4 py-3 rounded-l-xl border-y border-l border-white/[0.04]">
+                                <div class="text-sm font-bold text-white">#@q.ProductionScheduleId</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm font-semibold text-gray-200">@(q.ProductionSchedule?.Product?.ProductName ?? "—")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg border @resultClass">@q.Result</span>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm font-semibold text-emerald-400">@q.QtyPassed.ToString("N0")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-sm font-semibold @(q.QtyFailed > 0 ? "text-red-400" : "text-gray-500")">@q.QtyFailed.ToString("N0")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-xs text-gray-400">@(q.InspectedByUser?.FullName ?? q.InspectedByUser?.Email ?? "—")</div>
+                            </td>
+                            <td class="px-4 py-3 border-y border-white/[0.04]">
+                                <div class="text-xs text-gray-400">@(q.InspectedAt?.ToString("MMM dd, yyyy HH:mm") ?? "—")</div>
+                            </td>
+                            <td class="px-4 py-3 rounded-r-xl border-y border-r border-white/[0.04] max-w-xs">
+                                <div class="text-xs text-gray-500 truncate">@(q.Remarks ?? "—")</div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

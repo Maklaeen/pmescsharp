@@ -1,0 +1,882 @@
+@using Microsoft.AspNetCore.Identity
+@using PmesCSharp.Models
+@using Microsoft.EntityFrameworkCore
+@inject UserManager<ApplicationUser> UserManager
+@inject PmesCSharp.Data.AppDbContext DbContext
+@{
+    var currentUser = await UserManager.GetUserAsync(User);
+    var roles = currentUser is null ? new List<string>() : (await UserManager.GetRolesAsync(currentUser)).ToList();
+    var roleName = roles.FirstOrDefault() ?? "superadmin";
+
+    // Load theme from DB server-side so it's consistent across all pages
+    var userTheme = "dark";
+    if (currentUser is not null)
+    {
+        var setting = await DbContext.UserSettings.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == currentUser.Id);
+        userTheme = setting?.Theme ?? "dark";
+    }
+
+    var dashboardPath = roleName switch
+    {
+        "planner" => "/planner",
+        "inventory" => "/inventory",
+        "operator" => "/operator",
+        "qc" => "/qc",
+        _ => "/admin",
+    };
+
+    var isMasterDataRole = roleName is "superadmin" or "admin";
+    var canSeeAuditLogs = roleName is "superadmin" or "admin";
+    var canSeeSchedules = roleName is "admin" or "planner" or "inventory" or "qc";
+    var canSeeWorkOrders = roleName is "admin" or "planner" or "operator";
+    var canSeeCosting = roleName is "admin" or "planner";
+    var canSeeInventory = roleName is "admin" or "inventory";
+    var canSeeQc = roleName is "admin" or "qc";
+    var canSeeProductionProgress = roleName is "admin" or "planner";
+
+    var path = Context.Request.Path.Value ?? "";
+    bool IsActiveExact(string p) => string.Equals(path, p, StringComparison.OrdinalIgnoreCase);
+    bool IsActivePrefix(string p) => path.StartsWith(p, StringComparison.OrdinalIgnoreCase);
+
+    var displayName = string.IsNullOrWhiteSpace(currentUser?.FullName) ? (currentUser?.Email ?? "") : currentUser!.FullName;
+    var initials = new string(displayName.Take(2).ToArray()).ToUpperInvariant();
+
+    // Greeting based on time and sex
+    var hour = DateTime.Now.Hour;
+    var timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    var honorific = currentUser?.Sex == "Female" ? "Ms." : currentUser?.Sex == "Male" ? "Mr." : "";
+    var firstName = displayName.Split(' ').FirstOrDefault() ?? displayName;
+    var greeting = string.IsNullOrWhiteSpace(honorific)
+        ? $"{timeGreeting}, {firstName}!"
+        : $"{timeGreeting}, {honorific} {firstName}!";
+
+    // Replace dashboard titles with greeting
+    var pageTitle = ViewData["Title"] as string ?? "Dashboard";
+    var isDashboard = pageTitle.Contains("Dashboard", StringComparison.OrdinalIgnoreCase);
+    var displayTitle = isDashboard ? greeting : pageTitle;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@(ViewData["Title"] ?? "Dashboard") – PMES</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style type="text/tailwindcss">
+        @@layer base {
+            body {
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                @@apply bg-[#0c0c0e] text-gray-200;
+            }
+            .theme-light body, body.theme-light {
+                @@apply bg-gray-100 text-gray-900;
+            }
+        }
+        @@layer components {
+            .sidebar-link {
+                @@apply flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold text-gray-500 hover:text-white hover:bg-white/5 transition-all duration-200;
+            }
+            .sidebar-link.active {
+                @@apply text-orange-500 bg-orange-500/10 relative;
+            }
+            .sidebar-link.active::before {
+                content: '';
+                @@apply absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-orange-500 rounded-r-full;
+            }
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { @@apply bg-gray-800 rounded-full; }
+        }
+    </style>
+    <style>
+        /* Light mode overrides for all hardcoded dark elements */
+        .theme-light body {
+            background-color: #f3f4f6 !important;
+            color: #111827 !important;
+        }
+        .theme-light aside {
+            background-color: #ffffff !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light aside .bg-\[\#0c0c0e\] {
+            background-color: #ffffff !important;
+        }
+        .theme-light header {
+            background-color: #ffffff !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light main {
+            background-color: #f3f4f6 !important;
+        }
+        .theme-light .flex-1.flex.flex-col.min-w-0 {
+            background-color: #f3f4f6 !important;
+        }
+        /* Sidebar text */
+        .theme-light .sidebar-link {
+            color: #4b5563 !important;
+        }
+        .theme-light .sidebar-link:hover {
+            color: #111827 !important;
+            background-color: rgba(0,0,0,0.05) !important;
+        }
+        .theme-light .sidebar-link.active {
+            color: #ea580c !important;
+            background-color: rgba(234,88,12,0.1) !important;
+        }
+        /* Sidebar section labels */
+        .theme-light .text-gray-700 { color: #9ca3af !important; }
+        /* Sidebar logo area */
+        .theme-light aside .text-white { color: #111827 !important; }
+        .theme-light aside .text-gray-600 { color: #6b7280 !important; }
+        /* User card at bottom of sidebar */
+        .theme-light aside .bg-white\/\[0\.03\] {
+            background-color: #f9fafb !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light aside .border-white\/\[0\.05\] {
+            border-color: #e5e7eb !important;
+        }
+        /* Header text */
+        .theme-light header .text-white { color: #111827 !important; }
+        .theme-light header .text-gray-500 { color: #6b7280 !important; }
+        .theme-light header .bg-gray-900 {
+            background-color: #f3f4f6 !important;
+            border-color: #e5e7eb !important;
+        }
+        /* Cards and panels */
+        .theme-light .bg-\[\#111114\] {
+            background-color: #ffffff !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light .bg-white\/\[0\.02\],
+        .theme-light .bg-white\/\[0\.03\] {
+            background-color: #f9fafb !important;
+        }
+        .theme-light .border-white\/\[0\.05\],
+        .theme-light .border-white\/\[0\.06\],
+        .theme-light .border-white\/\[0\.08\] {
+            border-color: #e5e7eb !important;
+        }
+        /* Text colors */
+        .theme-light .text-white { color: #111827 !important; }
+        .theme-light .text-gray-200 { color: #374151 !important; }
+        .theme-light .text-gray-300 { color: #4b5563 !important; }
+        .theme-light .text-gray-400 { color: #6b7280 !important; }
+        .theme-light .text-gray-500 { color: #9ca3af !important; }
+        /* Table/list rows */
+        .theme-light .bg-gray-900\/40 {
+            background-color: #ffffff !important;
+            border-color: #e5e7eb !important;
+        }
+        .theme-light .bg-gray-800\/50,
+        .theme-light .bg-gray-800 {
+            background-color: #f3f4f6 !important;
+        }
+        .theme-light .border-gray-800,
+        .theme-light .border-gray-700 {
+            border-color: #e5e7eb !important;
+        }
+        /* Inputs */
+        .theme-light input, .theme-light select, .theme-light textarea {
+            background-color: #ffffff !important;
+            border-color: #d1d5db !important;
+            color: #111827 !important;
+        }
+        /* Scrollbar */
+        .theme-light .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #d1d5db !important;
+        }
+        /* Table rows */
+        .theme-light tr.bg-white\/\[0\.02\],
+        .theme-light tr.hover\:bg-white\/\[0\.05\]:hover {
+            background-color: #f9fafb !important;
+        }
+        .theme-light td, .theme-light th {
+            border-color: #e5e7eb !important;
+        }
+        .theme-light .divide-y > * {
+            border-color: #e5e7eb !important;
+        }
+        /* Hover states that turn white in dark mode */
+        .theme-light .hover\:text-white:hover,
+        .theme-light .group-hover\:text-white {
+            color: #111827 !important;
+        }
+        .theme-light .hover\:bg-white\/5:hover,
+        .theme-light .hover\:bg-white\/\[0\.05\]:hover,
+        .theme-light .hover\:bg-white\/\[0\.08\]:hover {
+            background-color: rgba(0,0,0,0.05) !important;
+        }
+        /* Progress bar track */
+        .theme-light .bg-white\/\[0\.06\] {
+            background-color: #e5e7eb !important;
+        }
+        /* Stat cards hover */
+        .theme-light .hover\:bg-\[\#16161a\]:hover {
+            background-color: #f3f4f6 !important;
+        }
+        /* Border separators */
+        .theme-light .border-gray-800\/50,
+        .theme-light .border-gray-800\/60,
+        .theme-light .border-gray-800\/40 {
+            border-color: #e5e7eb !important;
+        }
+        /* Mono/code text */
+        .theme-light .font-mono { color: #374151 !important; }
+        /* Pagination buttons */
+        .theme-light a.bg-white\/\[0\.03\],
+        .theme-light button.bg-white\/\[0\.03\] {
+            background-color: #f3f4f6 !important;
+            color: #374151 !important;
+        }
+        /* Catch-all: any remaining white/light text inside main content */
+        .theme-light main .text-white { color: #111827 !important; }
+        .theme-light main .text-gray-100 { color: #1f2937 !important; }
+        .theme-light main .text-gray-200 { color: #374151 !important; }
+        .theme-light main .text-gray-300 { color: #4b5563 !important; }
+        .theme-light main .text-gray-400 { color: #6b7280 !important; }
+        .theme-light main .text-gray-500 { color: #6b7280 !important; }
+        .theme-light main .text-gray-600 { color: #4b5563 !important; }
+        /* Quick action items */
+        .theme-light main .group-hover\:text-orange-500 { color: #ea580c !important; }
+        /* Session info borders */
+        .theme-light main .border-b { border-color: #e5e7eb !important; }
+        /* Skeleton overlay bg */
+        #page-loader-skeleton { background: #0c0c0e; }
+        .theme-light #page-loader-skeleton { background: #f3f4f6 !important; }
+        /* Skeleton shimmer */
+        @@ keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+            border-radius: 8px;
+        }
+        .theme-light .skeleton {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f9fafb 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+        }
+        /* Page loading overlay */
+        #page-loader {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        #page-loader.active { display: block; }
+        #page-loader-bar {
+            position: fixed;
+            top: 0; left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, #ea580c, #f97316);
+            border-radius: 0 2px 2px 0;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px rgba(234,88,12,0.6);
+        }
+        #page-loader-skeleton {
+            position: fixed;
+            top: 64px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            background: #0c0c0e;
+            overflow: hidden;
+        }
+        @@media (min-width: 1024px) {
+            #page-loader-skeleton {
+                top: 80px;
+                left: 288px;
+                padding: 32px;
+            }
+        }
+        .theme-light #page-loader-skeleton {
+            background: #f3f4f6;
+        }
+        #page-loader.active #page-loader-skeleton { display: flex; }
+        .sk-header { height: 28px; width: 220px; }
+        .sk-subheader { height: 16px; width: 160px; margin-top: -8px; }
+        .sk-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .sk-card { height: 130px; border-radius: 20px; }
+        .sk-table-header { height: 14px; width: 100%; border-radius: 6px; }
+        .sk-row { height: 60px; border-radius: 14px; }
+        .sk-row-sm { height: 44px; border-radius: 12px; }
+        /* Print styles */
+        .print-only { display: none; }
+        @@media print {
+            /* Hide UI chrome */
+            #sidebar, #sidebar-overlay, header, .sidebar-link, .no-print, .page-loader, .sk-header, .sk-subheader { display: none !important; }
+            /* Ensure main content uses full width */
+            .flex.h-screen.overflow-hidden { display: block !important; }
+            main, .flex-1.flex.flex-col.min-w-0 { margin-left: 0 !important; padding: 0.5in !important; background: white !important; color: #111 !important; }
+            body, html { background: white !important; color: #111 !important; }
+            /* Improve color printing */
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            /* Show print header only */
+            .print-only { display: block !important; margin-bottom: 12px; text-align: center; color: #111; }
+            .print-only .title { font-size: 16px; font-weight: 700; }
+            /* Tables: ensure borders are visible */
+            table { border-collapse: collapse !important; }
+        }
+    </style>
+
+    <script>
+        // Apply theme IMMEDIATELY before render to prevent flash
+        (function () {
+            try {
+                var t = localStorage.getItem('pmes-theme') || 'dark';
+                var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (!dark) document.documentElement.classList.add('theme-light');
+                // Sync both keys
+                localStorage.setItem('theme', dark ? 'dark' : 'light');
+                localStorage.setItem('pmes-theme', t);
+            } catch (e) { }
+        })();
+    </script>
+</head>
+<body class="text-gray-200">
+<div class="flex h-screen overflow-hidden">
+
+    <!-- Mobile sidebar overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden" onclick="closeSidebar()"></div>
+
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-72 bg-[#0c0c0e] border-r border-white/[0.05] flex flex-col flex-shrink-0 -translate-x-full lg:translate-x-0 transition-transform duration-300">
+        <div class="px-8 py-10 flex items-center gap-4">
+            <img src="/images/LOGO.png" alt="PMES Logo" class="w-11 h-11 object-contain">
+            <div>
+                <div class="font-extrabold text-lg text-white tracking-tight leading-tight">PMES</div>
+                <div class="text-[10px] font-bold text-gray-600 uppercase tracking-[0.2em] mt-1">MES v1.0</div>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-10">
+            <div class="px-4 mb-4 mt-2">
+                <p class="text-[11px] font-bold text-gray-700 uppercase tracking-[0.25em]">Main</p>
+            </div>
+            <a href="@dashboardPath" class="sidebar-link @(IsActiveExact(dashboardPath) ? "active" : "")">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                Dashboard
+            </a>
+
+            @if (roleName == "superadmin")
+            {
+                <a href="/superadmin/reports" class="sidebar-link @(IsActivePrefix("/superadmin/reports") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 14l3-3 3 3 6-6"/></svg>
+                    Reports
+                </a>
+            }
+
+            @if (isMasterDataRole)
+            {
+                <div class="px-4 mb-4 mt-10">
+                    <p class="text-[11px] font-bold text-gray-700 uppercase tracking-[0.25em]">Master Data</p>
+                </div>
+                <a href="/users" class="sidebar-link @(IsActivePrefix("/users") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    Users
+                </a>
+                <a href="/users/invites" class="sidebar-link @(IsActivePrefix("/users/invites") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12h6m-6 4h6M4 8h8M4 12h8m-8 4h8"/></svg>
+                    User Invites
+                </a>
+                @if (roleName != "superadmin")
+                {
+                    <a href="/admin/products" class="sidebar-link @(IsActivePrefix("/admin/products") ? "active" : "")">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        Products
+                    </a>
+                    <a href="/admin/materials" class="sidebar-link @(IsActivePrefix("/admin/materials") ? "active" : "")">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.382-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        Materials
+                    </a>
+                    <a href="/admin/bom" class="sidebar-link @(IsActivePrefix("/admin/bom") ? "active" : "")">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        Bill of Materials
+                    </a>
+                }
+            }
+
+            <div class="px-4 mb-4 mt-10">
+                <p class="text-[11px] font-bold text-gray-700 uppercase tracking-[0.25em]">Production</p>
+            </div>
+            @if (canSeeProductionProgress)
+            {
+                <a href="/progress" class="sidebar-link @(IsActivePrefix("/progress") || IsActivePrefix("/production/dashboard") || IsActivePrefix("/production") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 14l3-3 3 3 6-6"/></svg>
+                    Progress Dashboard
+                </a>
+            }
+            @if (canSeeSchedules)
+            {
+                <a href="/production/schedules" class="sidebar-link @(IsActivePrefix("/production/schedules") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16m-7 6h7"/></svg>
+                    Production Schedules
+                </a>
+            }
+            @if (canSeeWorkOrders)
+            {
+                <a href="/production/work-orders" class="sidebar-link @(IsActivePrefix("/production/work-orders") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Work Orders
+                </a>
+            }
+            @if (canSeeInventory)
+            {
+                <a href="/inventory/material-movements" class="sidebar-link @(IsActivePrefix("/inventory/material-movements") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18"/></svg>
+                    Material Movements
+                </a>
+            }
+            @if (canSeeCosting)
+            {
+                <a href="/costing" class="sidebar-link @(IsActivePrefix("/costing") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                    Production Costing
+                </a>
+            }
+            @if (canSeeQc)
+            {
+                <a href="/qc/inspections" class="sidebar-link @(IsActivePrefix("/qc/inspections") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Quality Control
+                </a>
+            }
+
+            @if (canSeeAuditLogs)
+            {
+                <a href="/admin/audit-logs" class="sidebar-link @(IsActivePrefix("/admin/audit-logs") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Audit Logs
+                </a>
+            }
+
+            @if (canSeeProductionProgress || canSeeCosting)
+            {
+                <a href="/reports" class="sidebar-link @(IsActivePrefix("/reports") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Reports
+                </a>
+            }
+
+            <div class="px-4 mb-4 mt-10">
+                <p class="text-[11px] font-bold text-gray-700 uppercase tracking-[0.25em]">System</p>
+            </div>
+            <a href="/profile" class="sidebar-link @(IsActivePrefix("/profile") ? "active" : "")">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                My Profile
+            </a>
+            <a href="/company" class="sidebar-link @(IsActivePrefix("/company") ? "active" : "")">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                Company Profile
+            </a>
+            @if (isMasterDataRole)
+            {
+
+            }
+            <a href="/settings" class="sidebar-link @(IsActivePrefix("/settings") ? "active" : "")">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 16v-2m6-6h2M4 12H6m12.364-5.364l1.414-1.414M4.222 19.778l1.414-1.414m0-12.728L4.222 4.222m15.556 15.556l-1.414-1.414M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                Settings
+            </a>
+            @if (roleName == "superadmin")
+            {
+                <div class="px-4 mb-4 mt-10">
+                    <p class="text-[11px] font-bold text-gray-700 uppercase tracking-[0.25em]">Superadmin</p>
+                </div>
+                <a href="/superadmin/plans" class="sidebar-link @(IsActivePrefix("/superadmin/plans") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Plan Management
+                </a>
+                <a href="/superadmin/subscriptions" class="sidebar-link @(IsActivePrefix("/superadmin/subscriptions") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    Company Subscriptions
+                </a>
+                <a href="/superadmin/billing-settings" class="sidebar-link @(IsActivePrefix("/superadmin/billing-settings") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Billing Settings
+                </a>
+            }
+            else if (roleName == "admin")
+            {
+                <a href="/subscription" class="sidebar-link @(IsActivePrefix("/subscription") ? "active" : "")">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 1.343-3 3v1H8a2 2 0 00-2 2v4h12v-4a2 2 0 00-2-2h-1v-1c0-1.657-1.343-3-3-3z"/></svg>
+                    Subscription
+                </a>
+            }
+        </nav>
+
+        <div class="p-6 border-t border-white/[0.05] bg-[#0c0c0e]">
+            <div class="flex items-center gap-4 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] group">
+                <div class="w-11 h-11 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/20">
+                    @initials
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[13px] font-bold text-white truncate">@displayName</div>
+                    <div class="text-[10px] font-bold text-gray-600 truncate uppercase tracking-wider mt-0.5">@char.ToUpperInvariant(roleName[0])@roleName.Substring(1)</div>
+                </div>
+                <form method="post" action="/logout" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="p-2 text-gray-500 hover:text-red-400 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <div class="flex-1 flex flex-col min-w-0 bg-[#0c0c0e]">
+        <header class="h-16 lg:h-20 border-b border-gray-800/50 px-4 lg:px-8 flex items-center justify-between flex-shrink-0 gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <button onclick="openSidebar()" class="lg:hidden p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-all flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <h1 class="text-lg lg:text-2xl font-bold text-white tracking-tight truncate">@displayTitle</h1>
+            </div>
+            <div class="flex items-center gap-2 lg:gap-4 flex-shrink-0">
+                <div class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full">
+                    <div class="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
+                    <span class="text-[11px] font-bold text-orange-500 uppercase tracking-wider">@roleName</span>
+                </div>
+                <div class="hidden md:block text-[11px] font-medium text-gray-500 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800">@DateTime.Now.ToString("MMM dd, yyyy")</div>
+
+                <a href="/notifications" id="notif-bell" class="relative p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-all duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <span id="notif-count" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center"></span>
+                </a>
+
+                <div class="relative" id="dash-theme-wrapper">
+                    <button onclick="toggleDashThemeMenu()" title="Toggle theme"
+                            class="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-all duration-200">
+                        <svg id="dt-light" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                        <svg id="dt-dark" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                        <svg id="dt-system" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </button>
+                    <div id="dash-theme-menu" class="hidden absolute right-0 mt-2 w-36 bg-gray-900 border border-white/[0.08] rounded-xl shadow-xl overflow-hidden z-50">
+                        <button onclick="setDashTheme('light')" class="dash-theme-opt w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition" data-t="light">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                            Light
+                        </button>
+                        <button onclick="setDashTheme('dark')" class="dash-theme-opt w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition" data-t="dark">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                            Dark
+                        </button>
+                        <button onclick="setDashTheme('system')" class="dash-theme-opt w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition" data-t="system">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            System
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar">
+            <div class="max-w-[1400px] mx-auto">
+                @RenderBody()
+            </div>
+        </main>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    (function () {
+        if (!window.flatpickr) return;
+
+        document.querySelectorAll('input.js-datepicker').forEach(function (el) {
+            window.flatpickr(el, {
+                dateFormat: 'Y-m-d',
+                allowInput: false,
+            });
+        });
+
+        document.querySelectorAll('input.js-datetimepicker').forEach(function (el) {
+            window.flatpickr(el, {
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: 'Y-m-d H:i',
+                allowInput: false,
+            });
+        });
+    })();
+</script>
+
+@await RenderSectionAsync("Scripts", required: false)
+
+<script>
+    // Dashboard theme toggle
+    (function () {
+        const THEME_KEY = 'pmes-theme';
+        const CYCLE = ['system','light','dark'];
+
+        function applyDashTheme(t) {
+            const dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('theme-light', !dark);
+            const tl = document.getElementById('dt-light');
+            const td = document.getElementById('dt-dark');
+            const ts = document.getElementById('dt-system');
+            if (tl) tl.classList.toggle('hidden', t !== 'light');
+            if (td) td.classList.toggle('hidden', t !== 'dark');
+            if (ts) ts.classList.toggle('hidden', t !== 'system');
+            document.querySelectorAll('.dash-theme-opt').forEach(btn => {
+                btn.classList.toggle('text-orange-400', btn.dataset.t === t);
+                btn.classList.toggle('text-gray-300', btn.dataset.t !== t);
+            });
+        }
+
+        window.setDashTheme = function(t) {
+            localStorage.setItem(THEME_KEY, t);
+            localStorage.setItem('theme', t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t);
+            applyDashTheme(t);
+            document.getElementById('dash-theme-menu').classList.add('hidden');
+            // Persist to server
+            fetch('/settings/theme', { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name=__RequestVerificationToken]')?.value ?? '' }, body: JSON.stringify({ theme: t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t }) }).catch(() => {});
+        };
+
+        window.toggleDashThemeMenu = function() {
+            document.getElementById('dash-theme-menu').classList.toggle('hidden');
+        };
+
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('dash-theme-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('dash-theme-menu').classList.add('hidden');
+            }
+        });
+
+        const saved = localStorage.getItem(THEME_KEY) || 'dark';
+        applyDashTheme(saved);
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if ((localStorage.getItem(THEME_KEY) || 'dark') === 'system') applyDashTheme('system');
+        });
+    })();
+</script>
+
+<!-- Page loader -->
+<div id="page-loader">
+    <div id="page-loader-bar"></div>
+    <div id="page-loader-skeleton">
+        <div class="sk-header skeleton"></div>
+        <div class="sk-subheader skeleton"></div>
+        <div class="sk-cards">
+            <div class="sk-card skeleton"></div>
+            <div class="sk-card skeleton"></div>
+            <div class="sk-card skeleton"></div>
+            <div class="sk-card skeleton"></div>
+        </div>
+        <div class="sk-table-header skeleton"></div>
+        <div class="sk-row skeleton"></div>
+        <div class="sk-row skeleton"></div>
+        <div class="sk-row skeleton"></div>
+        <div class="sk-row-sm skeleton"></div>
+        <div class="sk-row-sm skeleton"></div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var loader = document.getElementById('page-loader');
+        var bar = document.getElementById('page-loader-bar');
+        var timer, barTimer;
+
+        function showLoader() {
+            loader.classList.add('active');
+            bar.style.width = '0%';
+            // Animate bar to 80% quickly, then slow down
+            clearTimeout(barTimer);
+            setTimeout(function () { bar.style.width = '60%'; }, 50);
+            barTimer = setTimeout(function () { bar.style.width = '80%'; }, 400);
+        }
+
+        function hideLoader() {
+            bar.style.width = '100%';
+            setTimeout(function () {
+                loader.classList.remove('active');
+                bar.style.width = '0%';
+            }, 300);
+        }
+
+        // Show skeleton on navigation links (not forms, not external, not anchors)
+        document.addEventListener('click', function (e) {
+            var el = e.target.closest('a[href]');
+            if (!el) return;
+            var href = el.getAttribute('href');
+            if (!href || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('mailto')) return;
+            if (el.target === '_blank') return;
+            try {
+                var url = new URL(href, window.location.origin);
+                if (url.origin !== window.location.origin) return;
+                // Don't show for same page
+                if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+            } catch (err) { return; }
+            showLoader();
+        });
+
+        // Show on form submit (POST navigations)
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            // Skip forms that use fetch/ajax
+            if (form.dataset.noLoader) return;
+            showLoader();
+        });
+
+        // Hide on page show (back/forward cache)
+        window.addEventListener('pageshow', function (e) {
+            hideLoader();
+        });
+
+        // Hide if page load completes (safety net)
+        window.addEventListener('load', function () {
+            hideLoader();
+        });
+    })();
+</script>
+<script>
+    (function () {
+        function loadNotifCount() {
+            fetch('/notifications/unread-count')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var badge = document.getElementById('notif-count');
+                    if (!badge) return;
+                    if (d.count > 0) {
+                        badge.textContent = d.count > 99 ? '99+' : d.count;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }).catch(function () {});
+        }
+        loadNotifCount();
+        setInterval(loadNotifCount, 60000);
+    })();
+</script>
+<script>
+    function openSidebar() {
+        document.getElementById('sidebar').classList.remove('-translate-x-full');
+        document.getElementById('sidebar-overlay').classList.remove('hidden');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.add('-translate-x-full');
+        document.getElementById('sidebar-overlay').classList.add('hidden');
+    }
+    // Close sidebar on nav link click (mobile)
+    document.querySelectorAll('#sidebar a').forEach(function(a) {
+        a.addEventListener('click', function() {
+            if (window.innerWidth < 1024) closeSidebar();
+        });
+    });
+
+    // ── Global Button Loading State ──────────────────────────────────────────
+    // Automatically adds loading spinner to submit buttons on form submit
+    (function () {
+        var SPINNER = '<svg class="animate-spin w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>';
+
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (form.dataset.noLoader) return;
+
+            // Find the submit button that was clicked
+            var btn = form.querySelector('button[type="submit"]:not([data-no-loading])');
+            if (!btn) return;
+
+            var originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = SPINNER + '<span>' + (btn.dataset.loadingText || 'Processing...') + '</span>';
+            btn.style.opacity = '0.8';
+            btn.style.cursor = 'not-allowed';
+
+            // Safety: re-enable after 15s in case of error
+            setTimeout(function () {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                btn.style.opacity = '';
+                btn.style.cursor = '';
+            }, 15000);
+        });
+
+        // Re-enable buttons on page show (back/forward)
+        window.addEventListener('pageshow', function () {
+            document.querySelectorAll('button[type="submit"]:disabled').forEach(function (btn) {
+                btn.disabled = false;
+                btn.style.opacity = '';
+                btn.style.cursor = '';
+            });
+        });
+    })();
+
+    // ── Global Error Toast ───────────────────────────────────────────────────
+    // Shows a toast for unhandled fetch errors
+    window.showToast = function(message, type) {
+        var toast = document.createElement('div');
+        var colors = type === 'error'
+            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+            : type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+            : 'bg-orange-500/10 border-orange-500/20 text-orange-400';
+        toast.className = 'fixed bottom-6 right-6 z-[9999] px-5 py-3 rounded-2xl border text-sm font-semibold shadow-xl transition-all duration-300 ' + colors;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(function () {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(8px)';
+            setTimeout(function () { toast.remove(); }, 300);
+        }, 4000);
+    };
+
+    // Auto-dismiss TempData alerts after 5 seconds
+    (function () {
+        // Auto-add data-auto-dismiss to success alerts
+        document.querySelectorAll('.bg-emerald-500\/10, .bg-emerald-400\/10').forEach(function (el) {
+            setTimeout(function () {
+                el.style.transition = 'opacity 0.5s';
+                el.style.opacity = '0';
+                setTimeout(function () { el.remove(); }, 500);
+            }, 5000);
+        });
+    })();
+
+    // ── Global Form Validation Feedback ───────────────────────────────────────
+    // Highlight required fields that are empty on submit
+    (function () {
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            var valid = true;
+            form.querySelectorAll('input[required], select[required], textarea[required]').forEach(function (field) {
+                if (!field.value.trim()) {
+                    field.classList.add('ring-2', 'ring-red-500', 'border-red-500');
+                    valid = false;
+                    field.addEventListener('input', function () {
+                        field.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
+                    }, { once: true });
+                }
+            });
+        });
+    })();
+
+    // ── Confirm dialogs for destructive actions ────────────────────────────────
+    // Forms with data-confirm attribute will show a confirm dialog
+    (function () {
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            var msg = form.dataset.confirm;
+            if (msg && !confirm(msg)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    })();
+</script>
+</body>
+</html>

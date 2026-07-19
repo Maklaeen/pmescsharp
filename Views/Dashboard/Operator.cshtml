@@ -1,0 +1,84 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Operator Dashboard";
+    var myTotal = (int)(ViewBag.MyTotal ?? 0);
+    var myOngoing = (int)(ViewBag.MyOngoing ?? 0);
+    var myDone = (int)(ViewBag.MyDone ?? 0);
+    var myPending = (int)(ViewBag.MyPending ?? 0);
+    var myWorkOrders = ViewBag.MyWorkOrders as IEnumerable<PmesCSharp.Models.WorkOrder> ?? [];
+}
+
+<div class="space-y-6">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        @foreach (var stat in new[]
+        {
+            new { Label = "My Work Orders", Value = myTotal.ToString(), Color = "text-blue-400" },
+            new { Label = "Pending", Value = myPending.ToString(), Color = "text-gray-400" },
+            new { Label = "Ongoing", Value = myOngoing.ToString(), Color = "text-yellow-400" },
+            new { Label = "Done", Value = myDone.ToString(), Color = "text-emerald-400" },
+        })
+        {
+            <div class="bg-[#111114] border border-white/[0.05] rounded-[20px] p-5">
+                <div class="text-2xl font-black text-white">@stat.Value</div>
+                <div class="text-xs text-gray-500 mt-0.5">@stat.Label</div>
+            </div>
+        }
+    </div>
+
+    <!-- Progress Bar -->
+    @if (myTotal > 0)
+    {
+        var donePct = (int)((double)myDone / myTotal * 100);
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-2">My Progress</div>
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-base font-bold text-white">Work Order Completion</span>
+                <span class="text-base font-black text-orange-400">@donePct%</span>
+            </div>
+            <div class="h-3 rounded-full bg-white/[0.05] overflow-hidden">
+                <div class="h-full rounded-full bg-gradient-to-r from-orange-500 to-orange-400 transition-all" style="width:@donePct%"></div>
+            </div>
+            <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                <span>@myDone done</span>
+                <span>@myOngoing ongoing</span>
+                <span>@myPending pending</span>
+            </div>
+        </div>
+    }
+
+    <!-- My Work Orders List -->
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-base font-bold text-white">My Assigned Work Orders</h3>
+            <a href="/production/work-orders" class="text-xs font-bold text-orange-400 hover:text-orange-300">View All →</a>
+        </div>
+        @if (!myWorkOrders.Any())
+        {
+            <div class="text-center py-10 text-gray-600 text-sm">No work orders assigned to you yet.</div>
+        }
+        else
+        {
+            <div class="space-y-2">
+                @foreach (var wo in myWorkOrders)
+                {
+                    var statusColor = wo.Status switch {
+                        "done" => "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+                        "ongoing" => "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
+                        "cancelled" => "text-red-400 bg-red-500/10 border-red-500/20",
+                        _ => "text-gray-400 bg-gray-500/10 border-gray-500/20"
+                    };
+                    <a href="/production/work-orders/@wo.Id"
+                       class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all">
+                        <div>
+                            <div class="text-sm font-bold text-white">@wo.WorkOrderNo — @wo.ProcessStep</div>
+                            <div class="text-xs text-gray-500 mt-0.5">@(wo.ProductionSchedule?.Product?.ProductName ?? "—") · Qty: @wo.PlannedQty</div>
+                        </div>
+                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border @statusColor">@wo.Status</span>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>

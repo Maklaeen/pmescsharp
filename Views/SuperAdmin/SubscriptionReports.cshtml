@@ -1,0 +1,46 @@
+@{
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h2>Subscription Reports - @ViewBag.Month/@ViewBag.Year</h2>
+    <div class="mb-3">
+        <a class="btn btn-primary" href="#" onclick="window.print();return false;">Print / Save as PDF</a>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Total Revenue</h5>
+            <p>@( (ViewBag.TotalRevenueCentavos ?? 0) / 100.0.ToString("C2") ) @ViewBag.Currency</p>
+            <h5>Total Subscriptions Activated</h5>
+            <p>@ViewBag.TotalSubscriptions</p>
+            <h5>Active Users</h5>
+            <p>@ViewBag.UsersCount</p>
+        </div>
+    </div>
+
+    <h4>Activated Subscriptions</h4>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Activated At</th>
+                <th>Company</th>
+                <th>Plan</th>
+                <th>Cycle</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var it in Model)
+        {
+            <tr>
+                <td>@((DateTime)it.ActivatedAt).ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                <td>@(it.CompanySubscription?.Company?.Name ?? "-")</td>
+                <td>@it.Plan</td>
+                <td>@it.BillingCycle</td>
+                <td>@( ((long)it.AmountCentavos / 100.0).ToString("C2") ) @it.Currency</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

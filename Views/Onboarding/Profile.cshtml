@@ -1,0 +1,76 @@
+@model PmesCSharp.Models.ApplicationUser
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Setup Your Profile";
+}
+
+<div class="max-w-2xl mx-auto">
+    <!-- Progress -->
+    <div class="flex items-center gap-3 mb-8">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-black">✓</div>
+            <span class="text-sm font-bold text-gray-400">Company Profile</span>
+        </div>
+        <div class="flex-1 h-px bg-orange-500/40"></div>
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-black">2</div>
+            <span class="text-sm font-bold text-white">Your Profile</span>
+        </div>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="mb-6">
+            <h2 class="text-xl font-extrabold text-white tracking-tight">Tell us about yourself</h2>
+            <p class="text-sm text-gray-500 mt-1">This helps personalize your experience. You can update this anytime.</p>
+        </div>
+
+        <form method="post" action="/onboarding/profile" class="space-y-5">
+            @Html.AntiForgeryToken()
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Full Name <span class="text-orange-400">*</span></label>
+                <input type="text" name="name" value="@(Model.FullName ?? "")" required
+                       class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                       placeholder="e.g. Juan dela Cruz">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Mobile Number</label>
+                    <input type="tel" name="mobileNumber" value="@(Model.MobileNumber ?? "")"
+                           class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                           placeholder="+63 9XX XXX XXXX">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Sex</label>
+                    <select name="sex" class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="">— Select —</option>
+                        @if (Model.Sex == "Male")
+                        {
+                            <option value="Male" selected>Male</option>
+                            <option value="Female">Female</option>
+                        }
+                        else if (Model.Sex == "Female")
+                        {
+                            <option value="Male">Male</option>
+                            <option value="Female" selected>Female</option>
+                        }
+                        else
+                        {
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+                <a href="/onboarding/company" class="text-sm text-gray-500 hover:text-gray-300 transition">← Back</a>
+                <button type="submit"
+                        class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
+                    Finish Setup →
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

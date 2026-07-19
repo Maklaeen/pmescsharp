@@ -1,0 +1,225 @@
+@model PmesCSharp.Models.WorkOrder
+@inject Microsoft.AspNetCore.Identity.UserManager<PmesCSharp.Models.ApplicationUser> UserManager
+@using PmesCSharp.Models
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Work Order";
+    var currentUser = await UserManager.GetUserAsync(User);
+    var roles = await UserManager.GetRolesAsync(currentUser!);
+    var role = roles.FirstOrDefault() ?? "";
+
+    bool canPlan = role is "superadmin" or "admin" or "planner";
+    bool canOperate = role is "superadmin" or "admin" or "operator";
+    bool isAdminLike = role is "superadmin" or "admin";
+    bool isOperator = role == "operator";
+    bool isMine = isOperator && Model.AssignedToUserId == currentUser?.Id;
+    bool canOperateThis = canOperate && (!isOperator || isMine);
+    bool canComplete = isAdminLike || role == "planner" || (isOperator && isMine);
+    bool canClaim = isOperator && Model.AssignedToUserId is null && Model.Status == "pending" && Model.ProductionSchedule?.Status == "in_progress";
+
+    var statusClass = Model.Status switch
+    {
+        "pending" => "text-gray-300 bg-white/5 border-white/10",
+        "ongoing" => "text-orange-400 bg-orange-500/10 border-orange-500/20",
+        "done" => "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+        "cancelled" => "text-red-300 bg-red-500/10 border-red-500/20",
+        _ => "text-gray-300 bg-white/5 border-white/10"
+    };
+
+    var operators = ViewBag.AvailableOperators as IList<ApplicationUser> ?? [];
+    var materials = ViewBag.Materials as List<Material> ?? [];
+}
+
+@if (TempData["Success"] is string success)
+{
+    <div class="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm px-4 py-3 rounded-xl">@success</div>
+}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2 space-y-8">
+
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+            <div class="flex items-start justify-between gap-6">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-2xl font-extrabold text-white tracking-tight">@Model.WorkOrderNo</div>
+                        <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border @statusClass">@Model.Status</span>
+                    </div>
+                    <div class="mt-3 text-sm text-gray-400">
+                        Step: <span class="font-semibold text-gray-200">@Model.ProcessStep</span>
+                        <span class="text-gray-600">•</span>
+                        Schedule: <a class="text-orange-400 hover:text-orange-300" href="/production/schedules/@Model.ProductionScheduleId">#@Model.ProductionScheduleId</a>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-600">Product: @(Model.ProductionSchedule?.Product?.ProductName ?? "—")</div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    @if (canClaim)
+                    {
+                        <form method="post" action="/production/work-orders/@Model.Id/take">
+                            @Html.AntiForgeryToken()
+                            <button class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Take Work Order</button>
+                        </form>
+                    }
+                    @if (canOperateThis && Model.Status == "pending")
+                    {
+                        <form method="post" action="/production/work-orders/@Model.Id/status-start">
+                            @Html.AntiForgeryToken()
+                            <button class="px-4 py-2 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-700 text-white transition-all shadow-lg shadow-orange-900/20">Start</button>
+                        </form>
+                    }
+                    @if (isAdminLike && Model.Status != "cancelled" && Model.Status != "done")
+                    {
+                        <form method="post" action="/production/work-orders/@Model.Id/status-cancel" onsubmit="return confirm('Cancel this work order?');">
+                            @Html.AntiForgeryToken()
+                            <button class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Cancel</button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                    <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">Planned</div>
+                    <div class="mt-2 text-3xl font-extrabold text-white tracking-tight">@Model.PlannedQty.ToString("N0")</div>
+                </div>
+                <div class="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                    <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">Actual</div>
+                    <div class="mt-2 text-3xl font-extrabold text-white tracking-tight">@Model.ActualQty.ToString("N0")</div>
+                </div>
+                <div class="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                    <div class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">Assigned To</div>
+                    <div class="mt-2 text-sm font-bold text-white">@(Model.AssignedToUser?.FullName ?? Model.AssignedToUser?.Email ?? "—")</div>
+                </div>
+            </div>
+
+            @if (canPlan)
+            {
+                <div class="mt-8 pt-8 border-t border-white/[0.05]">
+                    <h3 class="text-sm font-bold text-white">Assign Operator</h3>
+                    <form method="post" action="/production/work-orders/@Model.Id/operator" class="mt-4 flex items-center gap-3">
+                        @Html.AntiForgeryToken()
+                        <select name="assignedToUserId" class="flex-1 bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none">
+                            <option value="">Unassigned</option>
+                            @foreach (var op in operators)
+                            {
+                                if (Model.AssignedToUserId == op.Id) { <option value="@op.Id" selected>@(op.FullName ?? op.Email)</option> }
+                                else { <option value="@op.Id">@(op.FullName ?? op.Email)</option> }
+                            }
+                        </select>
+                        <button class="px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Save</button>
+                    </form>
+                </div>
+            }
+        </div>
+
+        @if (canComplete)
+        {
+            <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+                <h3 class="text-lg font-bold text-white">Finish Work Order</h3>
+                <p class="text-sm text-gray-500 mt-1">@(Model.Status == "done" ? "Update actual quantity." : "Set actual quantity and mark as DONE.")</p>
+                <form method="post" action="/production/work-orders/@Model.Id/status-done" class="mt-6 flex items-center gap-3">
+                    @Html.AntiForgeryToken()
+                    <input type="number" min="0" name="actualQty" value="@Model.ActualQty"
+                        class="flex-1 bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
+                        placeholder="Actual output qty">
+                    <button class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-all">
+                        @(Model.Status == "done" ? "Update Qty" : "Mark Done")
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+                <h3 class="text-lg font-bold text-white">Material Usage</h3>
+                <p class="text-sm text-gray-500 mt-1">Record actual material usage (creates stock-out movement).</p>
+                <form method="post" action="/production/work-orders/@Model.Id/materials" class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    @Html.AntiForgeryToken()
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Material</label>
+                        <select name="materialId" class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none">
+                            <option value="">Select material…</option>
+                            @foreach (var m in materials)
+                            {
+                                <option value="@m.Id">@m.MaterialName (@m.MaterialCode)</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Qty</label>
+                        <input type="number" min="0.0001" step="0.0001" name="quantity" class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <button class="w-full px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Add</button>
+                    </div>
+                </form>
+
+                @if (Model.MaterialMovements.Any())
+                {
+                    <div class="mt-8">
+                        <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Usage Entries</div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-separate border-spacing-y-3">
+                                <thead>
+                                    <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                                        <th class="px-6 py-4">Material</th>
+                                        <th class="px-6 py-4">Qty</th>
+                                        <th class="px-6 py-4">Type</th>
+                                        <th class="px-6 py-4 text-right">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var mv in Model.MaterialMovements.OrderByDescending(m => m.Id))
+                                    {
+                                        <tr class="bg-white/[0.02] hover:bg-white/[0.05] transition-colors">
+                                            <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05]">
+                                                <div class="text-sm font-bold text-white">@(mv.Material?.MaterialName ?? "—")</div>
+                                                <div class="text-xs text-gray-600">@(mv.Material?.MaterialCode ?? "")</div>
+                                            </td>
+                                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                                <div class="text-sm font-semibold text-gray-200">@mv.Quantity.ToString("N2") @mv.Unit</div>
+                                            </td>
+                                            <td class="px-6 py-5 border-y border-white/[0.05]">
+                                                <div class="text-xs text-gray-400">@mv.MovementType • @mv.ReferenceType</div>
+                                            </td>
+                                            <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
+                                                <div class="text-xs text-gray-600">@mv.CreatedAt.ToString("MMM dd, yyyy HH:mm")</div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="space-y-8">
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+            <h3 class="text-lg font-bold text-white">Schedule Snapshot</h3>
+            <div class="mt-6 space-y-4 text-sm">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">Schedule Date</span>
+                    <span class="text-white font-bold">@Model.ProductionSchedule?.ScheduleDate.ToString("MMM dd, yyyy")</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">Schedule Status</span>
+                    <span class="text-white font-bold">@Model.ProductionSchedule?.Status.Replace("_", " ")</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">Planned Qty</span>
+                    <span class="text-white font-bold">@Model.ProductionSchedule?.PlannedQuantity.ToString("N0")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+            <h3 class="text-lg font-bold text-white">Navigation</h3>
+            <div class="mt-6 space-y-2">
+                <a href="/production/work-orders" class="block px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Back to Work Orders</a>
+                <a href="/production/schedules/@Model.ProductionScheduleId" class="block px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Open Schedule</a>
+            </div>
+        </div>
+    </div>
+</div>

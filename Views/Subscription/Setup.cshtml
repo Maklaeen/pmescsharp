@@ -1,0 +1,209 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Choose a Plan";
+    var billingEmail = ViewBag.BillingEmail as string ?? "";
+    var planFree = ViewBag.PlanFree as PmesCSharp.Models.SubscriptionPlanDefinition;
+    var planPro = ViewBag.PlanPro as PmesCSharp.Models.SubscriptionPlanDefinition;
+    var trialDays = (int?)ViewBag.TrialDays ?? 15;
+
+    var monthlyPrice = (planPro?.MonthlyPriceCentavos ?? 490000) / 100;
+    var annualPrice = planPro != null
+        ? (int)Math.Round(planPro.MonthlyPriceCentavos * 12 * 0.9) / 100
+        : (int)Math.Round(490000 * 12 * 0.9) / 100;
+    var annualMonthly = annualPrice / 12;
+}
+
+@if (TempData["Error"] is string error)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">@error</div>
+}
+
+<div class="max-w-5xl mx-auto">
+
+    <!-- Header-->
+    <div class="text-center mb-10">
+        <div class="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold px-4 py-1.5 rounded-full mb-4 uppercase tracking-widest">
+            @trialDays-Day Free Trial on Pro
+        </div>
+        <h2 class="text-3xl font-black text-white tracking-tight">Simple, transparent pricing</h2>
+        <p class="text-gray-500 mt-2 text-sm">Start free. Upgrade when you're ready.</p>
+    </div>
+
+    <!-- Billing toggle-->
+    <div class="flex items-center justify-center gap-3 mb-8">
+        <span id="lbl-monthly" class="text-sm font-bold text-white">Monthly</span>
+        <button type="button" onclick="toggleCycle()" id="cycle-toggle"
+                class="relative w-12 h-6 bg-orange-500 rounded-full transition-all focus:outline-none">
+            <span id="toggle-dot" class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all duration-200"></span>
+        </button>
+        <span id="lbl-annual" class="text-sm font-bold text-gray-500">
+            Annual <span class="text-orange-400 text-xs font-bold ml-1">Save 10%</span>
+        </span>
+    </div>
+
+    <!-- Plan cards-->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+        <!-- Free Plan-->
+        <div id="card-free" onclick="selectPlan('Free')"
+             class="relative bg-[#111114] border-2 border-orange-500 rounded-[24px] p-8 cursor-pointer transition-all duration-200 hover:bg-[#16161a]">
+            <div class="absolute top-5 right-5 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center" id="check-free">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="w-10 h-10 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 mb-5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            </div>
+            <div class="text-base font-bold text-white mb-1">Free</div>
+            <div class="text-3xl font-black text-white mb-1">₱0<span class="text-sm font-normal text-gray-500">/mo</span></div>
+            <div class="text-xs text-gray-600 mb-6">No credit card required</div>
+            <div class="space-y-2.5">
+                @foreach (var f in new[] {
+                    $"Up to {planFree?.MaxUsers ?? 50} users",
+                    $"Up to {planFree?.MaxProducts ?? 500} products",
+                    $"Up to {planFree?.MaxMaterials ?? 500} materials",
+                    "Production schedules & work orders",
+                    "Material requirements (MRP)",
+                    "Inventory & QC inspections",
+                })
+                {
+                    <div class="flex items-center gap-2.5 text-sm text-gray-400">
+                        <svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        @f
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Pro Plan-->
+        <div id="card-pro" onclick="selectPlan('Pro')"
+             class="relative bg-[#111114] border-2 border-white/[0.08] rounded-[24px] p-8 cursor-pointer transition-all duration-200 hover:bg-[#16161a] hover:border-white/20">
+            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                <span class="text-[10px] font-black bg-gradient-to-r from-orange-500 to-orange-400 text-white px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-orange-900/30">Most Popular</span>
+            </div>
+            <div class="absolute top-5 right-5 w-5 h-5 bg-orange-500 rounded-full items-center justify-center hidden" id="check-pro">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="w-10 h-10 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center text-orange-400 mb-5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <div class="text-base font-bold text-white mb-1">Pro</div>
+            <div class="text-3xl font-black text-white mb-1">
+                <span id="pro-price">₱@monthlyPrice</span>
+                <span class="text-sm font-normal text-gray-500" id="pro-cycle-label">/mo</span>
+            </div>
+            <div class="text-xs text-gray-600 mb-6" id="pro-sublabel">Billed monthly</div>
+            <div class="space-y-2.5">
+                @foreach (var f in new[] {
+                    "Everything in Free",
+                    "Unlimited users, products & materials",
+                    "Production costing & reports",
+                    "Advanced audit logs",
+                    "Priority support",
+                })
+                {
+                    <div class="flex items-center gap-2.5 text-sm text-gray-400">
+                        <svg class="w-4 h-4 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        @f
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout form-->
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <form method="post" action="/subscription/checkout" id="checkout-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="plan" id="plan-input" value="Free" />
+            <input type="hidden" name="cycle" id="cycle-input" value="Monthly" />
+
+            <div class="flex items-center gap-4 flex-wrap">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Billing Email</label>
+                    <input name="billingEmail" type="email" value="@billingEmail"
+                           class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-gray-600"
+                           placeholder="billing@company.com">
+                </div>
+                <div class="flex items-end gap-3 pt-5">
+                    <button type="button" onclick="document.getElementById('trial-form').submit()"
+                            class="px-5 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all whitespace-nowrap">
+                        Start @trialDays-Day Trial
+                    </button>
+                    <button type="submit" id="pay-btn"
+                            class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20 whitespace-nowrap">
+                        Activate Free →
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-4 flex items-center gap-2 text-xs text-gray-600">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                Payments secured by PayMongo
+            </div>
+        </form>
+
+        <form method="post" action="/subscription/trial" id="trial-form" class="hidden">
+            @Html.AntiForgeryToken()
+        </form>
+    </div>
+</div>
+
+<script>
+    var selectedPlan = 'Free';
+    var isAnnual = false;
+    var monthlyPrice = @monthlyPrice;
+    var annualTotal = @annualPrice;
+    var annualMonthly = @annualMonthly;
+
+    function toggleCycle() {
+        isAnnual = !isAnnual;
+        var dot = document.getElementById('toggle-dot');
+        var lblMonthly = document.getElementById('lbl-monthly');
+        var lblAnnual = document.getElementById('lbl-annual');
+
+        dot.style.transform = isAnnual ? 'translateX(24px)' : 'translateX(0)';
+        lblMonthly.className = isAnnual ? 'text-sm font-bold text-gray-500' : 'text-sm font-bold text-white';
+        lblAnnual.className = isAnnual ? 'text-sm font-bold text-white' : 'text-sm font-bold text-gray-500';
+
+        document.getElementById('cycle-input').value = isAnnual ? 'Annual' : 'Monthly';
+
+        if (isAnnual) {
+            document.getElementById('pro-price').textContent = '₱' + annualMonthly;
+            document.getElementById('pro-cycle-label').textContent = '/mo';
+            document.getElementById('pro-sublabel').textContent = '₱' + annualTotal + ' billed annually';
+        } else {
+            document.getElementById('pro-price').textContent = '₱' + monthlyPrice;
+            document.getElementById('pro-cycle-label').textContent = '/mo';
+            document.getElementById('pro-sublabel').textContent = 'Billed monthly';
+        }
+
+        refreshPayButton();
+    }
+
+    function selectPlan(plan) {
+        selectedPlan = plan;
+        document.getElementById('plan-input').value = plan;
+        var isFree = plan === 'Free';
+
+        document.getElementById('card-free').classList.toggle('border-orange-500', isFree);
+        document.getElementById('card-free').classList.toggle('border-white/[0.08]', !isFree);
+        document.getElementById('check-free').classList.toggle('hidden', !isFree);
+
+        document.getElementById('card-pro').classList.toggle('border-orange-500', !isFree);
+        document.getElementById('card-pro').classList.toggle('border-white/[0.08]', isFree);
+        var cp = document.getElementById('check-pro');
+        cp.classList.toggle('hidden', isFree);
+        cp.classList.toggle('flex', !isFree);
+
+        refreshPayButton();
+    }
+
+    function refreshPayButton() {
+        var btn = document.getElementById('pay-btn');
+        if (selectedPlan === 'Free') {
+            btn.textContent = 'Activate Free →';
+        } else {
+            btn.textContent = isAnnual ? 'Pay Annual with PayMongo →' : 'Pay Monthly with PayMongo →';
+        }
+    }
+</script>

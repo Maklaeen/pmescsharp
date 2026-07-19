@@ -1,0 +1,95 @@
+@model PmesCSharp.ViewModels.Join.JoinLoginViewModel
+@using PmesCSharp.ViewModels.Join
+@{
+    Layout = null;
+    var invitedEmail = ViewBag.InvitedEmail as string ?? "";
+    var role = ViewBag.Role as string ?? "";
+   var token = ViewBag.Token as string ?? "";
+    var registerModel = ViewBag.RegisterModel as JoinRegisterViewModel ?? new JoinRegisterViewModel { Email = invitedEmail };
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Company – PMES</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-white text-gray-900 dark:bg-gray-950 dark:text-white min-h-screen flex flex-col">
+
+    <nav class="border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
+        <a href="/" class="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Back to Home
+        </a>
+        <img src="/images/LOGO.png" alt="PMES Logo" class="h-7 w-auto object-contain" />
+    </nav>
+
+    <div class="flex-1 flex items-center justify-center px-4 py-12">
+        <div class="w-full max-w-3xl grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8">
+                <h1 class="text-2xl font-bold">You're invited</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Invite for: <span class="font-semibold text-gray-900 dark:text-white">@invitedEmail</span></p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Role (after approval): <span class="font-semibold text-orange-500">@role</span></p>
+                <div class="mt-6 text-xs text-gray-500">After joining, your account will be pending admin approval.</div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8">
+                    <h2 class="text-lg font-bold">Log in</h2>
+                    <form method="post" action="/join/@token/login" class="mt-6 space-y-4">
+                        @Html.AntiForgeryToken()
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
+                            <input name="Email" type="email" value="@Model.Email" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm" />
+                            <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Email)</span>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
+                            <input name="Password" type="password" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm" />
+                            <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Password)</span>
+                        </div>
+                        @if (!ViewData.ModelState.IsValid)
+                        {
+                            var globalErrors = ViewData.ModelState[string.Empty]?.Errors;
+                            if (globalErrors is not null && globalErrors.Count > 0)
+                            {
+                                <div class="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-2">
+                                    @foreach (var err in globalErrors) { <div>@err.ErrorMessage</div> }
+                                </div>
+                            }
+                        }
+                        <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 rounded-lg transition text-sm">Log in</button>
+                    </form>
+                </div>
+
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8">
+                    <h2 class="text-lg font-bold">Create an account</h2>
+                    <form method="post" action="/join/@token/register" class="mt-6 space-y-4">
+                        @Html.AntiForgeryToken()
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
+                            <input name="Name" type="text" value="@registerModel.Name" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
+                            <input name="Email" type="email" value="@registerModel.Email" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
+                            <input name="Password" type="password" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Confirm Password</label>
+                            <input name="ConfirmPassword" type="password" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm" />
+                        </div>
+                        <button type="submit" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2.5 rounded-lg transition text-sm">Create account</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

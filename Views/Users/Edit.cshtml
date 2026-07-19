@@ -1,0 +1,73 @@
+@model PmesCSharp.ViewModels.Users.UserFormViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Edit User";
+    var roles = ViewBag.Roles as string[] ?? [];
+    var userId = ViewBag.UserId as string ?? "";
+}
+
+<div class="max-w-3xl">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-white tracking-tight">Edit User</h2>
+            <p class="text-sm text-gray-500 mt-1">Update account details and role.</p>
+        </div>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            var errors = ViewData.ModelState.Values.SelectMany(v => v.Errors).ToList();
+            if (errors.Count > 0)
+            {
+                <div class="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-sm text-red-300">
+                    @errors[0].ErrorMessage
+                </div>
+            }
+        }
+
+        <form method="post" action="/users/@userId/edit" class="space-y-6">
+            @Html.AntiForgeryToken()
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Name</label>
+                <input type="text" name="Name" value="@Model.Name"
+                    class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Email</label>
+                <input type="email" name="Email" value="@Model.Email"
+                    class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Role</label>
+                <select name="Role" class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <option value="">Superadmin (no role)</option>
+                    @foreach (var role in roles)
+                    {
+                        if (Model.Role == role) { <option value="@role" selected>@role</option> }
+                        else { <option value="@role">@role</option> }
+                    }
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">New Password (optional)</label>
+                    <input type="password" name="Password"
+                        class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Confirm Password</label>
+                    <input type="password" name="PasswordConfirmation"
+                        class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-4">
+                <a href="/users" class="px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Back</a>
+                <button type="submit" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>

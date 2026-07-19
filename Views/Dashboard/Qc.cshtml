@@ -1,0 +1,97 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "QC Dashboard";
+    var totalInspections = (int)(ViewBag.TotalInspections ?? 0);
+    var passed = (int)(ViewBag.Passed ?? 0);
+    var failed = (int)(ViewBag.Failed ?? 0);
+    var pendingSchedules = (int)(ViewBag.PendingSchedules ?? 0);
+    var recentChecks = ViewBag.RecentChecks as IEnumerable<PmesCSharp.Models.QualityCheck> ?? [];
+    var passRate = totalInspections > 0 ? (int)((double)passed / totalInspections * 100) : 0;
+}
+
+<div class="space-y-6">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        @foreach (var stat in new[]
+        {
+            new { Label = "Total Inspections", Value = totalInspections.ToString(), Color = "text-blue-400" },
+            new { Label = "Passed", Value = passed.ToString(), Color = "text-emerald-400" },
+            new { Label = "Failed", Value = failed.ToString(), Color = "text-red-400" },
+            new { Label = "Schedules In Progress", Value = pendingSchedules.ToString(), Color = "text-yellow-400" },
+        })
+        {
+            <div class="bg-[#111114] border border-white/[0.05] rounded-[20px] p-5">
+                <div class="text-2xl font-black text-white">@stat.Value</div>
+                <div class="text-xs text-gray-500 mt-0.5">@stat.Label</div>
+            </div>
+        }
+    </div>
+
+    <!-- Pass Rate Chart -->
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-2">Quality Overview</div>
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-base font-bold text-white">Pass Rate</span>
+            <span class="text-2xl font-black @(passRate >= 80 ? "text-emerald-400" : passRate >= 50 ? "text-yellow-400" : "text-red-400")">@passRate%</span>
+        </div>
+        <div class="h-4 rounded-full bg-white/[0.05] overflow-hidden mb-3">
+            <div class="h-full rounded-full transition-all @(passRate >= 80 ? "bg-gradient-to-r from-emerald-500 to-emerald-400" : passRate >= 50 ? "bg-gradient-to-r from-yellow-500 to-yellow-400" : "bg-gradient-to-r from-red-500 to-red-400")"
+                 style="width:@passRate%"></div>
+        </div>
+        <div class="flex items-center gap-6 text-xs text-gray-500">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> @passed passed</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span> @failed failed</span>
+        </div>
+    </div>
+
+    <!-- Recent Inspections -->
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-base font-bold text-white">Recent Inspections</h3>
+            <a href="/qc/inspections" class="text-xs font-bold text-orange-400 hover:text-orange-300">View All →</a>
+        </div>
+        @if (!recentChecks.Any())
+        {
+            <div class="text-center py-10 text-gray-600 text-sm">No inspections recorded yet.</div>
+        }
+        else
+        {
+            <div class="space-y-2">
+                @foreach (var q in recentChecks)
+                {
+                    var isPassed = q.Result == "passed";
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                        <div>
+                            <div class="text-sm font-bold text-white">@(q.ProductionSchedule?.Product?.ProductName ?? "—")</div>
+                            <div class="text-xs text-gray-500 mt-0.5">
+                                Passed: @q.QtyPassed · Failed: @q.QtyFailed · @(q.InspectedAt?.ToShortDateString() ?? "")
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border @(isPassed ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-red-400 bg-red-500/10 border-red-500/20")">
+                            @q.Result.ToUpperInvariant()
+                        </span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a href="/qc/inspections"
+           class="group bg-[#111114] border border-white/[0.05] rounded-[20px] p-6 hover:border-orange-500/20 hover:bg-[#16161a] transition-all flex items-center gap-4">
+            <div class="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <span class="text-sm font-bold text-white">Quality Inspections</span>
+        </a>
+        <a href="/production/schedules"
+           class="group bg-[#111114] border border-white/[0.05] rounded-[20px] p-6 hover:border-orange-500/20 hover:bg-[#16161a] transition-all flex items-center gap-4">
+            <div class="w-10 h-10 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </div>
+            <span class="text-sm font-bold text-white">Production Schedules</span>
+        </a>
+    </div>
+</div>

@@ -1,0 +1,114 @@
+@model PmesCSharp.ViewModels.SuperAdmin.CompanySubscriptionOverrideViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Override Subscription";
+    var companyName = ViewBag.CompanyName as string ?? "Company";
+}
+
+@if (TempData["Error"] is string err)
+{
+    <div class="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">@err</div>
+}
+
+<div class="max-w-2xl space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Superadmin</div>
+            <h2 class="text-xl font-extrabold text-white tracking-tight mt-1">Override — @companyName</h2>
+        </div>
+        <a href="/superadmin/subscriptions"
+           class="px-4 py-2 text-sm font-bold text-gray-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] rounded-xl transition-all">
+            ← Back
+        </a>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <form method="post" action="/superadmin/subscriptions/@Model.CompanyId" class="space-y-5">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="CompanyId" value="@Model.CompanyId" />
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Plan</label>
+                    <select name="Plan" class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        @foreach (var p in Enum.GetValues<PmesCSharp.Models.SubscriptionPlan>())
+                        {
+                            <option value="@((int)p)" selected="@(Model.Plan == p)">@p</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Status</label>
+                    <select name="Status" class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        @foreach (var s in Enum.GetValues<PmesCSharp.Models.SubscriptionStatus>())
+                        {
+                            <option value="@((int)s)" selected="@(Model.Status == s)">@s</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Billing Cycle</label>
+                    <select name="BillingCycle" class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        @foreach (var b in Enum.GetValues<PmesCSharp.Models.SubscriptionBillingCycle>())
+                        {
+                            <option value="@((int)b)" selected="@(Model.BillingCycle == b)">@b</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Billing Email</label>
+                    <input type="email" name="BillingEmail" value="@Model.BillingEmail"
+                           class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                           placeholder="billing@company.com" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Period Ends At</label>
+                    <input type="datetime-local" name="CurrentPeriodEndsAt"
+                           value="@(Model.CurrentPeriodEndsAt?.ToString("yyyy-MM-ddTHH:mm") ?? "")"
+                           class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                    <div class="text-xs text-gray-600 mt-1">Leave blank for no expiry</div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Trial Ends At</label>
+                    <input type="datetime-local" name="TrialEndsAt"
+                           value="@(Model.TrialEndsAt?.ToString("yyyy-MM-ddTHH:mm") ?? "")"
+                           class="w-full bg-black/20 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
+                    Save Override
+                </button>
+                <a href="/superadmin/subscriptions"
+                   class="px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-5">
+        <form method="post" action="/superadmin/subscriptions/@Model.CompanyId/cancel">
+            @Html.AntiForgeryToken()
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm font-bold text-red-400">Cancel Subscription</div>
+                    <div class="text-xs text-gray-500 mt-0.5">Downgrades company to Free plan immediately.</div>
+                </div>
+                <button type="submit"
+                        onclick="return confirm('Cancel subscription for @companyName?')"
+                        class="px-4 py-2 text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all">
+                    Cancel Subscription
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

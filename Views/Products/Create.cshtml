@@ -1,0 +1,58 @@
+@model PmesCSharp.ViewModels.Products.ProductFormViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Create Product";
+}
+
+<div class="max-w-3xl">
+    <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-white tracking-tight">Create Product</h2>
+            <p class="text-sm text-gray-500 mt-1">Add a new finished good / SKU.</p>
+        </div>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            var errors = ViewData.ModelState.Values.SelectMany(v => v.Errors).ToList();
+            if (errors.Count > 0)
+            {
+                <div class="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-sm text-red-300">
+                    @errors[0].ErrorMessage
+                </div>
+            }
+        }
+
+        <form method="post" action="/admin/products" class="space-y-6">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="Status" value="active" />
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Product Name</label>
+                <input type="text" name="ProductName" value="@Model.ProductName"
+                    class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="e.g. T-Shirt (Black)">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Product Code</label>
+                    <input type="text" name="ProductCode" value="@Model.ProductCode"
+                        class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="e.g. TS-001">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Unit</label>
+                    <input type="text" name="Unit" value="@Model.Unit"
+                        class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="pcs">
+                </div>
+            </div>
+            <input type="hidden" name="UnitPrice" value="0" />
+
+            <div class="flex items-center justify-end gap-3 pt-4">
+                <a href="/admin/products" class="px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Cancel</a>
+                <button type="submit" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Save Product</button>
+            </div>
+        </form>
+    </div>
+</div>
