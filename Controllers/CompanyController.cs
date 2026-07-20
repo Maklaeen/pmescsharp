@@ -161,6 +161,7 @@ public class CompanyController : Controller
         company.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
+        await _audit.LogAsync("company.archive", "Company", company.Id.ToString(), $"Archived company {company.Name}");
         TempData["Success"] = $"{company.Name} has been archived.";
         return Redirect("/company");
     }
@@ -178,6 +179,7 @@ public class CompanyController : Controller
         company.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
+        await _audit.LogAsync("company.unarchive", "Company", company.Id.ToString(), $"Restored company {company.Name}");
         TempData["Success"] = $"{company.Name} has been unarchived.";
         return Redirect("/company?archived=true");
     }
@@ -199,6 +201,7 @@ public class CompanyController : Controller
         try
         {
             await DeleteCompanyAndRelatedDataAsync(id, ct);
+            await _audit.LogAsync("company.delete", "Company", id.ToString(), $"Permanently deleted company {name}");
             TempData["Success"] = $"{name} has been permanently deleted.";
         }
         catch (Exception ex)

@@ -19,6 +19,7 @@ public class AccountController : Controller
     private readonly EmailService _email;
     private readonly IRecaptchaService _recaptcha;
     private readonly IOtpService _otpService;
+    private readonly IAuditLogger _audit;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
@@ -27,7 +28,8 @@ public class AccountController : Controller
         AppDbContext db,
         EmailService email,
         IRecaptchaService recaptcha,
-        IOtpService otpService)
+        IOtpService otpService,
+        IAuditLogger audit)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -36,6 +38,7 @@ public class AccountController : Controller
         _email = email;
         _recaptcha = recaptcha;
         _otpService = otpService;
+        _audit = audit;
     }
 
     [HttpGet("/otp-login")]
@@ -116,7 +119,6 @@ public class AccountController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        // Verify the OTP code
         var isValid = await _otpService.VerifyOtpAsync(model.UserId, model.Code, cancellationToken);
         if (!isValid)
         {
@@ -124,7 +126,6 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // OTP verified, sign in the user
         var user = await _userManager.FindByIdAsync(model.UserId);
         if (user is null)
         {
@@ -134,6 +135,7 @@ public class AccountController : Controller
 
         await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
         var roles = await _userManager.GetRolesAsync(user);
+        await _audit.LogAsync("user.login", "User", user.Id, $"Login via OTP: {user.Email}", cancellationToken);
         return Redirect(ResolveDashboardPath(roles));
     }
 
@@ -184,6 +186,7 @@ public class AccountController : Controller
 
         await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
         var roles = await _userManager.GetRolesAsync(user);
+        await _audit.LogAsync("user.login", "User", user.Id, $"Login via password: {user.Email}", cancellationToken);
         return Redirect(ResolveDashboardPath(roles));
     }
 
@@ -272,6 +275,7 @@ public class AccountController : Controller
             await _db.SaveChangesAsync(cancellationToken);
 
             await _signInManager.SignInAsync(user, isPersistent: false);
+            await _audit.LogAsync("user.register", "User", user.Id, $"Registered new account: {user.Email}; company={company.Name}", cancellationToken);
 
             try
             {
@@ -300,8 +304,6 @@ public class AccountController : Controller
     [AllowAnonymous]
     public IActionResult SignInWithGoogle()
     {
-        // Important: this must NOT be the same path as GoogleOptions.CallbackPath.
-        // CallbackPath is handled by the Google auth middleware, which then redirects here.
         var callbackUrl = Url.Action(nameof(GoogleComplete), "Account", null, Request.Scheme)!;
         var props = _signInManager.ConfigureExternalAuthenticationProperties("Google", callbackUrl);
         return Challenge(props, "Google");
@@ -371,6 +373,7 @@ public class AccountController : Controller
                 await _db.SaveChangesAsync(cancellationToken);
 
                 await _signInManager.SignInAsync(user, isPersistent: false);
+                await _audit.LogAsync("user.register", "User", user.Id, $"Registered via Google: {user.Email}; company={company.Name}", cancellationToken);
                 return Redirect("/onboarding/company");
             }
             catch
@@ -396,16 +399,15 @@ public class AccountController : Controller
         }
 
         await _signInManager.SignInAsync(user, isPersistent: false);
+        await _audit.LogAsync("user.login", "User", user.Id, $"Login via Google: {user.Email}", cancellationToken);
         var redirectPath = await ResolvePostSignInPathAsync(user, roles, cancellationToken);
         return Redirect(redirectPath);
     }
 
     private async Task<string> ResolvePostSignInPathAsync(ApplicationUser user, IList<string> roles, CancellationToken cancellationToken)
     {
-        // Superadmin goes straight to dashboard
         if (roles.Contains("superadmin")) return "/admin";
 
-        // Admin onboarding: require subscription setup only if no subscription at all
         if (roles.Contains("admin") && user.CompanyId is int companyId && companyId > 0)
         {
             var hasSubscription = await _db.Set<CompanySubscription>()
@@ -511,6 +513,7 @@ public class AccountController : Controller
             return View(model);
         }
 
+        await _audit.LogAsync("user.password.reset", "User", user.Id, $"Password reset via email link: {user.Email}", cancellationToken);
         TempData["Status"] = "Your password has been reset.";
         return Redirect("/login");
     }
@@ -520,6 +523,9 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is not null)
+            await _audit.LogAsync("user.logout", "User", user.Id, $"Logged out: {user.Email}");
         await _signInManager.SignOutAsync();
         return RedirectToAction("Index", "Home");
     }

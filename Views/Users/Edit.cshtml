@@ -8,9 +8,12 @@
 
 <div class="max-w-3xl">
     <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-        <div class="mb-8">
-            <h2 class="text-2xl font-bold text-white tracking-tight">Edit User</h2>
-            <p class="text-sm text-gray-500 mt-1">Update account details and role.</p>
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h2 class="text-2xl font-bold text-white tracking-tight">Edit User</h2>
+                <p class="text-sm text-gray-500 mt-1">Update account details and role.</p>
+            </div>
+            <a href="/users" class="px-5 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Back</a>
         </div>
 
         @if (!ViewData.ModelState.IsValid)
@@ -64,7 +67,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center justify-end gap-3 pt-4">
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-white/[0.05]">
                 <a href="/users" class="px-6 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white text-sm font-bold rounded-xl border border-white/[0.05] transition-all">Back</a>
                 <button type="submit" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Save Changes</button>
             </div>

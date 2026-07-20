@@ -51,11 +51,11 @@
                             <span class="text-[10px] font-bold text-orange-500 uppercase tracking-widest bg-orange-500/5 px-2.5 py-1 rounded-lg border border-orange-500/10">@(string.IsNullOrWhiteSpace(u.PendingRole) ? "operator" : u.PendingRole)</span>
                         </td>
                         <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
-                            <form method="post" action="/users/@u.Id/status-approve" class="inline">
+                            <form method="post" action="/users/@u.Id/status-approve" data-confirm="Approve this user and grant them access?" class="inline">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all">Approve</button>
                             </form>
-                            <form method="post" action="/users/@u.Id/status-reject" class="inline ml-2" onsubmit="return confirm('Reject this user?');">
+                            <form method="post" action="/users/@u.Id/status-reject" data-confirm="Reject this user? Their account will be archived." class="inline ml-2">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Reject</button>
                             </form>

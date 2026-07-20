@@ -1,60 +1,115 @@
 @model PmesCSharp.Models.ErrorViewModel
 @{
     Layout = null;
+
+    var type    = Model?.ErrorType ?? "unexpected";
+    var title   = Model?.Title   ?? "Something Went Wrong";
+    var message = Model?.Message ?? "An unexpected error occurred. Please try again or contact support.";
+
+    // Per-type visual config
+    var (iconColor, bgColor, borderColor, badgeText, iconPath) = type switch
+    {
+        "db" => (
+            "text-red-400",
+            "bg-red-500/10",
+            "border-red-500/20",
+            "Database Error",
+            "M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"
+        ),
+        "timeout" => (
+            "text-yellow-400",
+            "bg-yellow-500/10",
+            "border-yellow-500/20",
+            "Request Timed Out",
+            "M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+        ),
+        "offline" => (
+            "text-gray-400",
+            "bg-gray-500/10",
+            "border-gray-500/20",
+            "Service Unavailable",
+            "M3 3l8.735 8.735m0 0a6.003 6.003 0 007.54-7.54m-7.54 7.54L3 21M17.25 3.75L21 7.5m-3.75 0L21 3.75M3.75 20.25L7.5 21m-3.75-.75L3.75 17.25"
+        ),
+        "save" => (
+            "text-orange-400",
+            "bg-orange-500/10",
+            "border-orange-500/20",
+            "Failed to Save",
+            "M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+        ),
+        _ => (
+            "text-red-400",
+            "bg-red-500/10",
+            "border-red-500/20",
+            "Unexpected Error",
+            "M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+        )
+    };
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Something went wrong – PMES</title>
+    <title>@title – PMES</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style> body { font-family: 'Inter', sans-serif; } </style>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
 </head>
-<body class="bg-gray-950 min-h-screen flex flex-col">
+<body class="bg-[#0c0c0e] min-h-screen flex flex-col">
 
-    <nav class="border-b border-gray-800 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <a href="/" class="flex items-center gap-2 text-gray-400 hover:text-white transition text-sm">
+    <nav class="border-b border-white/[0.05] px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
+        <a href="javascript:history.back()" class="flex items-center gap-2 text-gray-500 hover:text-white transition text-sm font-medium">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
             </svg>
-            Back to Home
+            Go Back
         </a>
-        <div class="flex items-center gap-3">
-            <img src="/images/LOGO.png" alt="PMES Logo" class="h-7 w-auto object-contain" />
-        </div>
+        <img src="/images/LOGO.png" alt="PMES" class="h-7 w-auto object-contain opacity-60">
     </nav>
 
-    <div class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="flex-1 flex items-center justify-center px-4 py-16">
         <div class="w-full max-w-md text-center">
-            <div class="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+
+            <div class="w-20 h-20 @bgColor border @borderColor rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10 @iconColor" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="@iconPath"/>
                 </svg>
             </div>
 
-            <h1 class="text-2xl font-bold text-white">Something went wrong</h1>
-            <p class="text-gray-400 text-sm mt-2 leading-relaxed">
-                An unexpected error occurred while processing your request.<br>Please try again or contact support if the problem persists.
-            </p>
+            <div class="inline-flex items-center gap-2 @bgColor border @borderColor rounded-full px-3 py-1 mb-4">
+                <span class="text-[11px] font-bold @iconColor uppercase tracking-wider">@badgeText</span>
+            </div>
 
-            @if (Model.ShowRequestId)
+            <h1 class="text-2xl font-extrabold text-white tracking-tight">@title</h1>
+            <p class="text-gray-400 text-sm mt-3 leading-relaxed max-w-sm mx-auto">@message</p>
+
+            @if (Model?.ShowRequestId == true)
             {
-                <div class="mt-4 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-left">
-                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Request ID</p>
-                    <code class="text-xs text-gray-400 break-all">@Model.RequestId</code>
+                <div class="mt-5 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-3 text-left">
+                    <p class="text-[10px] text-gray-600 font-bold uppercase tracking-widest mb-1">Request ID</p>
+                    <code class="text-xs text-gray-500 break-all">@Model.RequestId</code>
                 </div>
             }
 
             <div class="mt-8 flex items-center justify-center gap-3">
-                <a href="javascript:history.back()" class="border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white font-medium px-5 py-2.5 rounded-lg transition text-sm">
-                    Go Back
-                </a>
-                <a href="/admin" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-lg transition text-sm">
+                <button onclick="window.location.reload()"
+                        class="border border-white/[0.08] hover:border-white/20 text-gray-300 hover:text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm">
+                    Try Again
+                </button>
+                <a href="/admin" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-orange-900/20">
                     Go to Dashboard
                 </a>
             </div>
+
+            @if (type == "db")
+            {
+                <p class="mt-6 text-xs text-gray-600">If this keeps happening, please contact your system administrator.</p>
+            }
+            @if (type == "timeout")
+            {
+                <p class="mt-6 text-xs text-gray-600">This may be caused by a slow network or high server load.</p>
+            }
         </div>
     </div>
 

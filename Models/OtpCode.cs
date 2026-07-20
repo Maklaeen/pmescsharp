@@ -11,7 +11,7 @@ public class OtpCode
     public int Id { get; set; }
 
     [Required]
-    [StringLength(255)]
+    [StringLength(450)]
     public string UserId { get; set; } = "";
 
     public ApplicationUser? User { get; set; }

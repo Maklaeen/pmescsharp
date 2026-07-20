@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PmesCSharp.Data;
 using PmesCSharp.Models;
+using PmesCSharp.Services;
 using PmesCSharp.ViewModels.Account;
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
@@ -17,13 +18,15 @@ public class ProfileController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly PmesCSharp.Services.EmailService _email;
     private readonly AppDbContext _db;
+    private readonly IAuditLogger _audit;
 
-    public ProfileController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, PmesCSharp.Services.EmailService email, AppDbContext db)
+    public ProfileController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, PmesCSharp.Services.EmailService email, AppDbContext db, IAuditLogger audit)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _email = email;
         _db = db;
+        _audit = audit;
     }
 
     [HttpGet("/profile")]
@@ -76,6 +79,7 @@ public class ProfileController : Controller
         if (result.Succeeded)
         {
             await _signInManager.RefreshSignInAsync(user);
+            await _audit.LogAsync("user.profile.update", "User", user.Id, $"Updated profile: Name={user.FullName}; Email={user.Email}; DOB={user.DateOfBirth:yyyy-MM-dd}; Mobile={user.MobileNumber}; Sex={user.Sex}");
             TempData["Success"] = "Profile updated successfully.";
         }
         else
@@ -106,6 +110,7 @@ public class ProfileController : Controller
             if (addResult.Succeeded)
             {
                 await _signInManager.RefreshSignInAsync(user);
+                await _audit.LogAsync("user.password.set", "User", user.Id, "Set password for account");
                 TempData["Success"] = "Password set successfully. You can now log in with email and password.";
             }
             else
@@ -119,6 +124,7 @@ public class ProfileController : Controller
         if (result.Succeeded)
         {
             await _signInManager.RefreshSignInAsync(user);
+            await _audit.LogAsync("user.password.change", "User", user.Id, "Changed password for account");
             TempData["Success"] = "Password changed successfully.";
         }
         else
@@ -154,6 +160,7 @@ public class ProfileController : Controller
                 $"""<p>Hi {System.Net.WebUtility.HtmlEncode(user.FullName ?? user.Email)},</p><p>Please verify your email by clicking the link below:</p><p><a href=\"{confirmUrl}\">Verify Email</a></p>"""
             );
 
+            await _audit.LogAsync("user.email.verification.sent", "User", user.Id, "Sent email verification request");
             TempData["Success"] = "Verification email sent. Please check your inbox.";
         }
         catch
@@ -178,6 +185,10 @@ public class ProfileController : Controller
         {
             var decoded = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
             var result = await _userManager.ConfirmEmailAsync(user, decoded);
+            if (result.Succeeded)
+            {
+                await _audit.LogAsync("user.email.verified", "User", user.Id, "Verified email address");
+            }
             TempData[result.Succeeded ? "Success" : "Error"] = result.Succeeded
                 ? "Email verified successfully."
                 : "Invalid or expired verification link.";
@@ -216,6 +227,7 @@ public class ProfileController : Controller
                 </div>
                 """
             );
+            await _audit.LogAsync("user.delete_code.sent", "User", user.Id, "Requested account deletion verification code");
             return Json(new { success = true });
         }
         catch (Exception ex)
@@ -310,6 +322,7 @@ public class ProfileController : Controller
                 await _userManager.DeleteAsync(userToDelete);
         }
 
+        await _audit.LogAsync("user.account.delete", "User", userId, $"Deleted account for {user.Email}; admin={isAdmin}; companyId={companyId}");
         TempData["Success"] = "Your account has been deleted.";
         return Redirect("/");
     }

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net;
 using System.Net.Mail;
 
@@ -12,16 +13,23 @@ public class EmailService
     public async Task SendAsync(string toEmail, string subject, string htmlBody)
     {
         var host = _config["Smtp:Host"];
+        if (string.IsNullOrWhiteSpace(host))
+            throw new InvalidOperationException("SMTP host is not configured.");
+
         var port = _config.GetValue<int>("Smtp:Port");
-        var enableSsl = _config.GetValue<bool>("Smtp:EnableSsl");
+        var enableSsl = _config.GetValue<bool>("Smtp:EnableSsl");   
         var from = _config["Smtp:From"];
         var username = _config["Smtp:Username"];
-        var password = _config["Smtp:Password"];
+        var passwordRaw = _config["Smtp:Password"];
+        var password = string.IsNullOrWhiteSpace(passwordRaw)
+            ? null
+            : new string(passwordRaw.Where(c => !char.IsWhiteSpace(c)).ToArray());
 
         using var client = new SmtpClient(host, port)
         {
             EnableSsl = enableSsl,
-            Credentials = new NetworkCredential(username, password),
+            UseDefaultCredentials = false,
+            Credentials = new NetworkCredential(username!, password!),
         };
 
         var message = new MailMessage

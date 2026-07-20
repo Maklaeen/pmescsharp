@@ -95,9 +95,9 @@
                         <td class="px-4 py-4 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
                             @if (i.IsActive)
                             {
-                                <form method="post" action="/users/invites/@i.Id/revoke" class="inline">
+                                <form method="post" action="/users/invites/@i.Id/revoke" data-confirm="Revoke this invite for @i.Email?" class="inline">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all" onclick="return confirm('Revoke this invite?');">Revoke</button>
+                                    <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Revoke</button>
                                 </form>
                             }
                             else

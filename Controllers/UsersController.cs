@@ -224,6 +224,7 @@ public class UsersController : Controller
         if (!string.IsNullOrWhiteSpace(model.Role))
             await _userManager.AddToRoleAsync(user, model.Role);
 
+        await _audit.LogAsync("user.create", "User", user.Id, $"Created user {user.Email}; role={model.Role}");
         TempData["Success"] = "User created successfully.";
         return Redirect("/users");
     }
@@ -323,6 +324,7 @@ public class UsersController : Controller
             await _userManager.ResetPasswordAsync(user, token, model.Password);
         }
 
+        await _audit.LogAsync("user.update", "User", user.Id, $"Updated user {user.Email}; role={model.Role}");
         TempData["Success"] = "User updated successfully.";
         return Redirect("/users");
     }
@@ -348,6 +350,7 @@ public class UsersController : Controller
             user.IsArchived = true;
             user.ArchivedAt = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
+            await _audit.LogAsync("user.archive", "User", user.Id, $"Archived user {user.Email}");
         }
 
         TempData["Success"] = "User archived.";
@@ -368,6 +371,7 @@ public class UsersController : Controller
             user.IsArchived = false;
             user.ArchivedAt = null;
             await _userManager.UpdateAsync(user);
+            await _audit.LogAsync("user.restore", "User", user.Id, $"Restored user {user.Email}");
         }
 
         TempData["Success"] = "User restored.";

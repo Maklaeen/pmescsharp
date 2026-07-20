@@ -14,14 +14,16 @@ public class InvitationsController : Controller
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly EmailService _email;
+    private readonly IAuditLogger _audit;
 
     private static readonly string[] AllRoles = ["admin", "planner", "inventory", "operator", "qc"];
 
-    public InvitationsController(AppDbContext db, UserManager<ApplicationUser> userManager, EmailService email)
+    public InvitationsController(AppDbContext db, UserManager<ApplicationUser> userManager, EmailService email, IAuditLogger audit)
     {
         _db = db;
         _userManager = userManager;
         _email = email;
+        _audit = audit;
     }
 
     [HttpGet("/admin/invitations")]
@@ -88,6 +90,7 @@ public class InvitationsController : Controller
                 </div>
                 """
             );
+            await _audit.LogAsync("invitation.send", "Invitation", invitation.Id.ToString(), $"Invited {email} as {role}");
             TempData["Success"] = $"Invitation sent to {email}.";
         }
         catch (Exception ex)
@@ -105,6 +108,7 @@ public class InvitationsController : Controller
         var invite = await _db.Invitations.FindAsync(id);
         if (invite is not null)
         {
+            await _audit.LogAsync("invitation.revoke", "Invitation", invite.Id.ToString(), $"Revoked invitation for {invite.Email}");
             _db.Invitations.Remove(invite);
             await _db.SaveChangesAsync();
         }

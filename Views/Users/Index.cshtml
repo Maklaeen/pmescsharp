@@ -107,14 +107,14 @@
                                     @if (!archived)
                                     {
                                         <a href="/users/@user.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
-                                        <form method="post" action="/users/@user.Id/delete" onsubmit="return confirm('Archive this user?');" class="inline">
+                                        <form method="post" action="/users/@user.Id/delete" data-confirm="Archive this user? They will lose access until restored." class="inline">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/30 text-yellow-300 transition-all">Archive</button>
                                         </form>
                                     }
                                     else
                                     {
-                                        <form method="post" action="/users/@user.Id/status-restore" onsubmit="return confirm('Restore this user?');" class="inline">
+                                        <form method="post" action="/users/@user.Id/status-restore" data-confirm="Restore this user?" class="inline">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all">Restore</button>
                                         </form>

@@ -524,7 +524,7 @@
                     <div class="text-[13px] font-bold text-white truncate">@displayName</div>
                     <div class="text-[10px] font-bold text-gray-600 truncate uppercase tracking-wider mt-0.5">@char.ToUpperInvariant(roleName[0])@roleName.Substring(1)</div>
                 </div>
-                <form method="post" action="/logout" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                <form method="post" action="/logout" data-confirm="Are you sure you want to log out?" class="opacity-0 group-hover:opacity-100 transition-opacity">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="p-2 text-gray-500 hover:text-red-400 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
@@ -684,6 +684,18 @@
     </div>
 </div>
 
+<script>
+    // ── Confirm dialogs — MUST be first so it can cancel before loader/button handlers fire
+    (function () {
+        document.addEventListener('submit', function (e) {
+            var msg = e.target.dataset.confirm;
+            if (msg && !confirm(msg)) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true); // capture phase — runs before all bubble-phase listeners
+    })();
+</script>
 <script>
     (function () {
         var loader = document.getElementById('page-loader');
@@ -865,16 +877,78 @@
         });
     })();
 
-    // ── Confirm dialogs for destructive actions ────────────────────────────────
-    // Forms with data-confirm attribute will show a confirm dialog
+    // confirm dialogs handled above in capture phase
+</script>
+
+<!-- ── Offline / Session-expired / Request-timeout banners ───────────────── -->
+<div id="offline-banner" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 bg-gray-900 border border-gray-700 text-gray-200 text-sm font-semibold px-5 py-3 rounded-2xl shadow-2xl">
+    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l8.735 8.735m0 0a6.003 6.003 0 007.54-7.54m-7.54 7.54L3 21"/>
+    </svg>
+    <span>You're offline. Changes may not be saved.</span>
+</div>
+
+<div id="session-banner" class="hidden fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center p-4">
+    <div class="bg-[#111114] border border-white/[0.08] rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+        <div class="w-14 h-14 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-yellow-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-extrabold text-white">Session Expired</h3>
+        <p class="text-gray-400 text-sm mt-2 leading-relaxed">Your session has expired due to inactivity. Please log in again to continue.</p>
+        <a href="/login" class="mt-6 inline-block w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-lg shadow-orange-900/20">
+            Log In Again
+        </a>
+    </div>
+</div>
+
+<div id="timeout-banner" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-sm font-semibold px-5 py-3 rounded-2xl shadow-2xl">
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <span>Request timed out. Please try again.</span>
+    <button onclick="document.getElementById('timeout-banner').classList.add('hidden')" class="ml-2 text-yellow-500 hover:text-yellow-300 transition">&times;</button>
+</div>
+
+<script>
+    // Offline / online detection
+    (function () {
+        var banner = document.getElementById('offline-banner');
+        function update() {
+            if (!navigator.onLine) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+        window.addEventListener('offline', update);
+        window.addEventListener('online', update);
+        update();
+    })();
+
+    // Intercept fetch/XHR 401 responses → show session-expired modal
+    (function () {
+        var origFetch = window.fetch;
+        window.fetch = function () {
+            return origFetch.apply(this, arguments).then(function (res) {
+                if (res.status === 401) {
+                    document.getElementById('session-banner').classList.remove('hidden');
+                }
+                return res;
+            });
+        };
+    })();
+
+    // Intercept form submits: show timeout banner if server takes > 30s
     (function () {
         document.addEventListener('submit', function (e) {
             var form = e.target;
-            var msg = form.dataset.confirm;
-            if (msg && !confirm(msg)) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+            if (form.dataset.noLoader) return;
+            var timer = setTimeout(function () {
+                document.getElementById('timeout-banner').classList.remove('hidden');
+            }, 30000);
+            window.addEventListener('pageshow', function () { clearTimeout(timer); }, { once: true });
         });
     })();
 </script>

@@ -23,13 +23,13 @@
 
     @if (User.IsInRole("superadmin") || User.IsInRole("admin"))
     {
-    <form method="post" action="/company" class="space-y-5">
+    <form method="post" action="/company" data-confirm="Save changes to company profile?" class="space-y-5">
         @Html.AntiForgeryToken()
 
         <div>
             <label class="block text-sm font-medium text-gray-300 mb-1.5">Display Name</label>
             <input name="DisplayName" value="@Model.DisplayName" required
-                   class="w-full bg-gray-800/60 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                   class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition" />
             <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.DisplayName)</span>
         </div>
 
@@ -37,13 +37,13 @@
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
                 <input name="Email" value="@Model.Email"
-                       class="w-full bg-gray-800/60 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                       class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition" />
                 <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Email)</span>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-1.5">Phone</label>
                 <input name="Phone" value="@Model.Phone"
-                       class="w-full bg-gray-800/60 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                       class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition" />
                 <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Phone)</span>
             </div>
         </div>
@@ -51,7 +51,7 @@
         <div>
             <label class="block text-sm font-medium text-gray-300 mb-1.5">Address</label>
             <input name="Address" value="@Model.Address"
-                   class="w-full bg-gray-800/60 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                   class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition" />
             <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Address)</span>
         </div>
 
@@ -59,19 +59,19 @@
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-1.5">Website</label>
                 <input name="Website" value="@Model.Website"
-                       class="w-full bg-gray-800/60 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                       class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition" />
                 <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Website)</span>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-1.5">Industry</label>
                 <input name="Industry" value="@Model.Industry"
-                       class="w-full bg-gray-800/60 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                       class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition" />
                 <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Industry)</span>
             </div>
         </div>
 
-        <div class="pt-2">
-            <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-6 rounded-lg transition text-sm">
+        <div class="pt-4 border-t border-white/[0.05]">
+            <button type="submit" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
                 Save Changes
             </button>
         </div>
