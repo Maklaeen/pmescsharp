@@ -41,6 +41,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProductionCost> ProductionCosts => Set<ProductionCost>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -32,6 +32,7 @@ builder.Services
 
 builder.Services.AddScoped<PmesCSharp.Services.EmailService>();
 builder.Services.AddScoped<PmesCSharp.Services.IEmailSender, PmesCSharp.Services.SmtpEmailSender>();
+builder.Services.AddScoped<PmesCSharp.Services.IOtpService, PmesCSharp.Services.OtpService>();
 builder.Services.AddScoped<PmesCSharp.Services.IAuditLogger, PmesCSharp.Services.AuditLogger>();
 builder.Services.AddScoped<PmesCSharp.Services.IRecaptchaService, PmesCSharp.Services.RecaptchaService>();
 builder.Services.AddScoped<PmesCSharp.Services.SubscriptionSettingsService>();
@@ -78,8 +79,8 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
             // It must be a distinct endpoint from our own controller action.
             options.CallbackPath = "/signin-google/callback";
             options.SignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
-            options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None;
-            options.CorrelationCookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.None;
+            options.CorrelationCookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+            options.CorrelationCookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
             options.CorrelationCookie.HttpOnly = true;
             options.CorrelationCookie.IsEssential = true;
             options.Events.OnRemoteFailure = ctx =>
@@ -94,8 +95,8 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 
 builder.Services.ConfigureExternalCookie(options =>
 {
-    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None;
-    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.None;
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
     options.Cookie.IsEssential = true;
 });
 
@@ -103,14 +104,14 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/login";
     options.AccessDeniedPath = "/access/denied";
-    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.None;
+    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
 });
 
 var app = builder.Build();
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
 });
 
 if (!app.Environment.IsDevelopment())

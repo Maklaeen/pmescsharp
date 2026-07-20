@@ -18,6 +18,7 @@ public class AccountController : Controller
     private readonly AppDbContext _db;
     private readonly EmailService _email;
     private readonly IRecaptchaService _recaptcha;
+    private readonly IOtpService _otpService;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
@@ -25,7 +26,8 @@ public class AccountController : Controller
         IConfiguration configuration,
         AppDbContext db,
         EmailService email,
-        IRecaptchaService recaptcha)
+        IRecaptchaService recaptcha,
+        IOtpService otpService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -33,6 +35,106 @@ public class AccountController : Controller
         _db = db;
         _email = email;
         _recaptcha = recaptcha;
+        _otpService = otpService;
+    }
+
+    [HttpGet("/otp-login")]
+    [AllowAnonymous]
+    public IActionResult OtpLogin()
+    {
+        ViewData["RecaptchaSiteKey"] =
+            _configuration["Recaptcha:SiteKey"] ??
+            _configuration["ReCaptchaSettings:SiteKey"];
+
+        return View(new OtpLoginViewModel());
+    }
+
+    [HttpPost("/otp-login")]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OtpLogin(OtpLoginViewModel model, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid) return View(model);
+
+        var captchaToken = Request.Form["g-recaptcha-response"].ToString();
+        if (!await _recaptcha.VerifyAsync(captchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken))
+        {
+            ModelState.AddModelError(string.Empty, "reCAPTCHA validation failed. Please try again.");
+            return View(model);
+        }
+
+        var user = await _userManager.FindByEmailAsync(model.Email);
+        if (user is null)
+        {
+            ModelState.AddModelError(string.Empty, "Email address not found in our system.");
+            return View(model);
+        }
+
+        if (!user.IsApproved)
+        {
+            ModelState.AddModelError(string.Empty, "Your account is pending admin approval.");
+            return View(model);
+        }
+
+        // Check rate limiting
+        if (!await _otpService.CanRequestNewOtpAsync(model.Email, cancellationToken))
+        {
+            ModelState.AddModelError(string.Empty, "Please wait before requesting a new code.");
+            return View(model);
+        }
+
+        // Generate and send OTP
+        var sent = await _otpService.GenerateAndSendOtpAsync(model.Email, cancellationToken);
+        if (!sent)
+        {
+            ModelState.AddModelError(string.Empty, "Failed to send OTP code. Please try again.");
+            return View(model);
+        }
+
+        return RedirectToAction(nameof(OtpVerify), new { email = model.Email });
+    }
+
+    [HttpGet("/otp-verify")]
+    [AllowAnonymous]
+    public async Task<IActionResult> OtpVerify(string email, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return Redirect("/otp-login");
+
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+            return Redirect("/otp-login");
+
+        return View(new OtpVerifyViewModel { Email = email, UserId = user.Id });
+    }
+
+    [HttpPost("/otp-verify")]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OtpVerify(OtpVerifyViewModel model, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        // Verify the OTP code
+        var isValid = await _otpService.VerifyOtpAsync(model.UserId, model.Code, cancellationToken);
+        if (!isValid)
+        {
+            ModelState.AddModelError(string.Empty, "Invalid or expired OTP code. Please try again.");
+            return View(model);
+        }
+
+        // OTP verified, sign in the user
+        var user = await _userManager.FindByIdAsync(model.UserId);
+        if (user is null)
+        {
+            ModelState.AddModelError(string.Empty, "User not found.");
+            return View(model);
+        }
+
+        await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
+        var roles = await _userManager.GetRolesAsync(user);
+        return Redirect(ResolveDashboardPath(roles));
     }
 
     [HttpGet("/login")]
