@@ -38,13 +38,20 @@
                 }
                 @foreach (var item in Model)
                 {
-                    var actionColor = item.Action.Contains("delete") || item.Action.Contains("cancel") || item.Action.Contains("revoke")
+                    var normalizedAction = (item.Action ?? string.Empty).ToLowerInvariant();
+                    var isProductAction = item.EntityType == "Product" || normalizedAction.Contains("product");
+                    var isProductionAction = item.EntityType == "ProductionSchedule" || item.EntityType == "WorkOrder" || normalizedAction.Contains("production") || normalizedAction.Contains("schedule") || normalizedAction.Contains("workorder") || normalizedAction.Contains("work_order") || normalizedAction.Contains("work-orders");
+                    var actionColor = normalizedAction.Contains("delete") || normalizedAction.Contains("cancel") || normalizedAction.Contains("revoke")
                         ? "text-red-400 bg-red-500/10 border-red-500/20"
-                        : item.Action.Contains("create") || item.Action.Contains("setup") || item.Action.Contains("activated")
-                            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                            : item.Action.Contains("update") || item.Action.Contains("set")
-                                ? "text-blue-400 bg-blue-500/10 border-blue-500/20"
-                                : "text-gray-400 bg-white/5 border-white/10";
+                        : isProductAction && (normalizedAction.Contains("create") || normalizedAction.Contains("update") || normalizedAction.Contains("archive") || normalizedAction.Contains("unarchive"))
+                            ? "text-fuchsia-300 bg-fuchsia-500/10 border-fuchsia-500/20"
+                            : isProductionAction
+                                ? "text-orange-300 bg-orange-500/10 border-orange-500/20"
+                                : normalizedAction.Contains("create") || normalizedAction.Contains("setup") || normalizedAction.Contains("activated")
+                                    ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                    : normalizedAction.Contains("update") || normalizedAction.Contains("set")
+                                        ? "text-blue-400 bg-blue-500/10 border-blue-500/20"
+                                        : "text-gray-400 bg-white/5 border-white/10";
 
                     <tr class="bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
                         <td class="px-4 py-3 rounded-l-xl border-y border-l border-white/[0.04]">

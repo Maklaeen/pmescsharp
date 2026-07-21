@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PmesCSharp.Data;
 using PmesCSharp.Models;
+using PmesCSharp.Services;
 
 namespace PmesCSharp.Controllers;
 
@@ -14,13 +15,15 @@ public class ProductionSchedulesController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly PmesCSharp.Services.EntitlementService _entitlements;
     private readonly ICurrentCompany _currentCompany;
+    private readonly IAuditLogger _audit;
 
-    public ProductionSchedulesController(AppDbContext db, UserManager<ApplicationUser> userManager, PmesCSharp.Services.EntitlementService entitlements, ICurrentCompany currentCompany)
+    public ProductionSchedulesController(AppDbContext db, UserManager<ApplicationUser> userManager, PmesCSharp.Services.EntitlementService entitlements, ICurrentCompany currentCompany, IAuditLogger audit)
     {
         _db = db;
         _userManager = userManager;
         _entitlements = entitlements;
         _currentCompany = currentCompany;
+        _audit = audit;
     }
 
     [HttpGet("/production/schedules")]
@@ -77,6 +80,11 @@ public class ProductionSchedulesController : Controller
 
         _db.ProductionSchedules.Add(schedule);
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("production_schedule.create", "ProductionSchedule", schedule.Id.ToString(), $"Created schedule for productId={schedule.ProductId}, qty={schedule.PlannedQuantity}, date={schedule.ScheduleDate}");
+        }
+        catch { }
         TempData["Success"] = "Schedule created.";
         return Redirect($"/production/schedules/{schedule.Id}");
     }
@@ -156,6 +164,11 @@ public class ProductionSchedulesController : Controller
         }
 
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("work_order.generate", "ProductionSchedule", schedule.Id.ToString(), $"Generated {steps.Length} work orders for schedule {schedule.Id}");
+        }
+        catch { }
         TempData["Success"] = "Work orders generated.";
         return Redirect($"/production/schedules/{id}");
     }
@@ -200,6 +213,11 @@ public class ProductionSchedulesController : Controller
         schedule.ExpectedEndAt = string.IsNullOrWhiteSpace(expectedEndAt) ? null : DateTime.Parse(expectedEndAt);
         schedule.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("production_schedule.update", "ProductionSchedule", schedule.Id.ToString(), $"Updated schedule {schedule.Id}");
+        }
+        catch { }
         TempData["Success"] = "Schedule updated.";
         return Redirect($"/production/schedules/{id}");
     }
@@ -215,6 +233,11 @@ public class ProductionSchedulesController : Controller
         schedule.Status = "in_progress";
         schedule.StartedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("production_schedule.start", "ProductionSchedule", schedule.Id.ToString(), "Started production schedule");
+        }
+        catch { }
         TempData["Success"] = "Schedule started.";
         return Redirect($"/production/schedules/{id}");
     }
@@ -230,6 +253,11 @@ public class ProductionSchedulesController : Controller
         schedule.Status = "completed";
         schedule.CompletedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("production_schedule.complete", "ProductionSchedule", schedule.Id.ToString(), "Completed production schedule");
+        }
+        catch { }
         TempData["Success"] = "Schedule completed.";
         return Redirect($"/production/schedules/{id}");
     }
@@ -245,6 +273,11 @@ public class ProductionSchedulesController : Controller
         schedule.Status = "cancelled";
         schedule.CancelledAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("production_schedule.cancel", "ProductionSchedule", schedule.Id.ToString(), "Cancelled production schedule");
+        }
+        catch { }
         TempData["Success"] = "Schedule cancelled.";
         return Redirect($"/production/schedules/{id}");
     }

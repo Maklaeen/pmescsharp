@@ -63,7 +63,7 @@ public class ProductsController : Controller
             return View("Create", model);
         }
 
-        _db.Products.Add(new Product
+        var product = new Product
         {
             CompanyId = companyId,
             ProductCode = model.ProductCode,
@@ -72,9 +72,16 @@ public class ProductsController : Controller
             UnitPrice = model.UnitPrice,
             Unit = model.Unit,
             Status = model.Status,
-        });
+        };
 
+        _db.Products.Add(product);
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("product.create", "Product", product.Id.ToString(), $"Added product {product.ProductName} ({product.ProductCode})");
+        }
+        catch { }
+
         TempData["Success"] = "Product created successfully.";
         return Redirect("/admin/products");
     }

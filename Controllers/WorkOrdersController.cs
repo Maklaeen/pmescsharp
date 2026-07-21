@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PmesCSharp.Data;
 using PmesCSharp.Models;
+using PmesCSharp.Services;
 
 namespace PmesCSharp.Controllers;
 
@@ -13,12 +14,14 @@ public class WorkOrdersController : Controller
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ICurrentCompany _currentCompany;
+    private readonly IAuditLogger _audit;
 
-    public WorkOrdersController(AppDbContext db, UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany)
+    public WorkOrdersController(AppDbContext db, UserManager<ApplicationUser> userManager, ICurrentCompany currentCompany, IAuditLogger audit)
     {
         _db = db;
         _userManager = userManager;
         _currentCompany = currentCompany;
+        _audit = audit;
     }
 
     [HttpGet("/production/work-orders")]
@@ -64,6 +67,11 @@ public class WorkOrdersController : Controller
         var user = await _userManager.GetUserAsync(User);
         wo.AssignedToUserId = user?.Id;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("work_order.claim", "WorkOrder", wo.Id.ToString(), $"Work order claimed by {user?.Email}");
+        }
+        catch { }
         TempData["Success"] = "Work order claimed.";
         return Redirect($"/production/work-orders/{id}");
     }
@@ -78,6 +86,11 @@ public class WorkOrdersController : Controller
         wo.Status = "ongoing";
         wo.StartedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("work_order.start", "WorkOrder", wo.Id.ToString(), "Started work order");
+        }
+        catch { }
         TempData["Success"] = "Work order started.";
         return Redirect($"/production/work-orders/{id}");
     }
@@ -93,6 +106,11 @@ public class WorkOrdersController : Controller
         wo.Status = "done";
         wo.FinishedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("work_order.complete", "WorkOrder", wo.Id.ToString(), $"Finished work order with qty {actualQty}");
+        }
+        catch { }
         TempData["Success"] = "Work order marked done.";
         return Redirect($"/production/work-orders/{id}");
     }
@@ -108,6 +126,11 @@ public class WorkOrdersController : Controller
         wo.Status = "cancelled";
         wo.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("work_order.cancel", "WorkOrder", wo.Id.ToString(), "Cancelled work order");
+        }
+        catch { }
         TempData["Success"] = "Work order cancelled.";
         return Redirect($"/production/work-orders/{id}");
     }
@@ -122,6 +145,11 @@ public class WorkOrdersController : Controller
 
         wo.AssignedToUserId = string.IsNullOrWhiteSpace(assignedToUserId) ? null : assignedToUserId;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("work_order.assign", "WorkOrder", wo.Id.ToString(), $"Assigned to {(string.IsNullOrWhiteSpace(assignedToUserId) ? "none" : assignedToUserId)}");
+        }
+        catch { }
         TempData["Success"] = "Operator assigned.";
         return Redirect($"/production/work-orders/{id}");
     }
@@ -153,6 +181,11 @@ public class WorkOrdersController : Controller
 
         material.StockQuantity -= quantity;
         await _db.SaveChangesAsync();
+        try
+        {
+            await _audit.LogAsync("work_order.material_usage", "WorkOrder", wo.Id.ToString(), $"Recorded {quantity} {material.Unit} of {material.MaterialName}");
+        }
+        catch { }
         TempData["Success"] = "Material usage recorded.";
         return Redirect($"/production/work-orders/{id}");
     }
