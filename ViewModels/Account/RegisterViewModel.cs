@@ -4,27 +4,28 @@ namespace PmesCSharp.ViewModels.Account;
 
 public class RegisterViewModel
 {
-    [Required]
+    [Required(ErrorMessage = "Full name is required.")]
     [StringLength(255)]
     public string Name { get; set; } = "";
 
-    [Required]
     [StringLength(200)]
-    public string CompanyName { get; set; } = "";
+    public string? CompanyName { get; set; }
 
-    [Required]
-    [EmailAddress]
+    [Required(ErrorMessage = "Email address is required.")]
+    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
     public string Email { get; set; } = "";
 
-    [Required]
+    [Required(ErrorMessage = "Password is required.")]
     [DataType(DataType.Password)]
     public string Password { get; set; } = "";
 
-    [Required]
+    [Required(ErrorMessage = "Please confirm your password.")]
     [DataType(DataType.Password)]
-    [Compare(nameof(Password))]
+    [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
     public string ConfirmPassword { get; set; } = "";
 
-    // Google reCAPTCHA response token (v2/v3). When Recaptcha:SecretKey isn't configured, verification is skipped.
+    [StringLength(32)]
+    public string? InvitationCode { get; set; }
+
     public string? RecaptchaToken { get; set; }
 }

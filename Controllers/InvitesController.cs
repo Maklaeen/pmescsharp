@@ -69,19 +69,15 @@ public class InvitesController : Controller
         var companyId = _currentCompany.CompanyId;
         if (!User.IsInRole("superadmin") && companyId <= 0) return Forbid();
 
-        ViewBag.Roles = InviteRoles;
-
         if (!InviteRoles.Contains(model.Role))
-            ModelState.AddModelError(nameof(model.Role), "Invalid role.");
-
-        if (!ModelState.IsValid)
         {
+            TempData["Error"] = "Invalid role.";
             return Redirect("/users/invites");
         }
 
         var token = GenerateToken();
         var tokenHash = HashToken(token);
-        var code = GenerateCode();
+        var code = GenerateShortCode();
 
         var actor = await _userManager.GetUserAsync(User);
         var invite = new CompanyInvite
@@ -101,24 +97,60 @@ public class InvitesController : Controller
         await _db.SaveChangesAsync(cancellationToken);
 
         var joinUrl = $"{Request.Scheme}://{Request.Host}/join/{token}";
-        var subject = "PMES: Company invitation";
-        var body = $"You have been invited to join a PMES company.\n\nRole: {invite.Role}\nInvite link: {joinUrl}\nInvite code: {invite.Code}\n\nThis invite expires on: {invite.ExpiresAt:yyyy-MM-dd HH:mm} (UTC).\n\nIf you did not expect this invite, you can ignore this email.";
-
-      try
+        try
         {
-            await _email.SendAsync(invite.InvitedEmail, subject, body, cancellationToken);
+            await _email.SendAsync(invite.InvitedEmail, "PMES: Company invitation",
+                $"You have been invited to join a PMES company.\n\nRole: {invite.Role}\nInvite link: {joinUrl}\nInvite code: {invite.Code}\n\nThis invite expires on: {invite.ExpiresAt:yyyy-MM-dd HH:mm} (UTC).\n\nIf you did not expect this invite, you can ignore this email.",
+                cancellationToken);
         }
         catch
         {
-            // Keep the invite row for troubleshooting but show an error to the user.
             TempData["Error"] = "Failed to send invite email. Please check SMTP settings.";
             return Redirect("/users/invites");
         }
 
         await _audit.LogAsync("invite.create", "CompanyInvite", invite.Id.ToString(), $"Invited {invite.InvitedEmail} as {invite.Role} (exp {invite.ExpiresAt:O})", cancellationToken);
-
-       // If SMTP isn't configured, the sender will throw and this action will show a friendly error.
         TempData["Success"] = "Invite sent.";
+        return Redirect("/users/invites");
+    }
+
+    [HttpPost("/admin/users/invites/quick-code")]
+    [HttpPost("/users/invites/quick-code")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickCode([FromForm] string role, CancellationToken cancellationToken)
+    {
+        var companyId = _currentCompany.CompanyId;
+        if (!User.IsInRole("superadmin") && companyId <= 0) return Forbid();
+
+        if (!InviteRoles.Contains(role))
+        {
+            TempData["Error"] = "Invalid role.";
+            return Redirect("/users/invites");
+        }
+
+        var actor = await _userManager.GetUserAsync(User);
+        var code = GenerateShortCode();
+
+        var invite = new CompanyInvite
+        {
+            CompanyId = companyId,
+            InvitedEmail = "",
+            Role = role,
+            TokenHash = HashToken(GenerateToken()),
+            Code = code,
+            ExpiresAt = DateTime.UtcNow.AddHours(24),
+            MaxUses = 1,
+            UsesCount = 0,
+            CreatedByUserId = actor?.Id,
+        };
+
+        _db.Add(invite);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        await _audit.LogAsync("invite.quickcode", "CompanyInvite", invite.Id.ToString(), $"Generated quick code {code} as {role}", cancellationToken);
+
+        TempData["NewCode"] = invite.Code;
+        TempData["NewRole"] = invite.Role;
         return Redirect("/users/invites");
     }
 
@@ -149,7 +181,7 @@ public class InvitesController : Controller
         return Base64UrlEncode(bytes);
     }
 
-    private static string GenerateCode()
+    private static string GenerateShortCode()
     {
         // Short human-friendly code (no ambiguous chars)
         const string alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";

@@ -222,13 +222,64 @@ public class AccountController : Controller
             return View(model);
         }
 
+        // CompanyName is required only when no invitation code
+        if (string.IsNullOrWhiteSpace(model.InvitationCode) && string.IsNullOrWhiteSpace(model.CompanyName))
+        {
+            ModelState.AddModelError(nameof(model.CompanyName), "Company name is required.");
+            return View(model);
+        }
+
+        // If invitation code provided, join existing company instead of creating a new one
+        if (!string.IsNullOrWhiteSpace(model.InvitationCode))
+        {
+            var code = model.InvitationCode.Trim().ToUpperInvariant();
+            var now = DateTime.UtcNow;
+            var invite = await _db.Set<CompanyInvite>()
+                .FirstOrDefaultAsync(i => i.Code == code && i.RevokedAt == null && i.ExpiresAt > now && i.UsesCount < i.MaxUses, cancellationToken);
+
+            if (invite is null)
+            {
+                ModelState.AddModelError(nameof(model.InvitationCode), "Invalid or expired invitation code.");
+                return View(model);
+            }
+
+            var user = new ApplicationUser
+            {
+                UserName = model.Email,
+                Email = model.Email,
+                FullName = model.Name,
+                EmailConfirmed = false,
+                CompanyId = invite.CompanyId,
+                IsApproved = false, // still needs admin approval
+            };
+
+            var createResult = await _userManager.CreateAsync(user, model.Password);
+            if (!createResult.Succeeded)
+            {
+                foreach (var error in createResult.Errors)
+                    ModelState.AddModelError(string.Empty, error.Description);
+                return View(model);
+            }
+
+            await _userManager.AddToRoleAsync(user, invite.Role);
+
+            invite.UsesCount++;
+            invite.ConsumedAt = now;
+            await _db.SaveChangesAsync(cancellationToken);
+
+            await _audit.LogAsync("user.register", "User", user.Id, $"Registered via invite code {code}: {user.Email}; role={invite.Role}", cancellationToken);
+
+            TempData["Status"] = "Your account has been created and is pending admin approval.";
+            return Redirect("/login");
+        }
+
         await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
         {
-            var codeBase = SlugifyCompanyCode(model.CompanyName);
+            var codeBase = SlugifyCompanyCode(model.CompanyName ?? "");
             var code = await EnsureUniqueCompanyCodeAsync(codeBase, cancellationToken);
 
-            var company = new Company { Name = model.CompanyName.Trim(), Code = code };
+            var company = new Company { Name = model.CompanyName!.Trim(), Code = code };
             _db.Companies.Add(company);
             await _db.SaveChangesAsync(cancellationToken);
 
@@ -417,6 +468,21 @@ public class AccountController : Controller
         }
 
         return ResolveDashboardPath(roles);
+    }
+
+    [HttpGet("/register/lookup-code")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LookupCode([FromQuery] string code, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return Json(new { });
+        var upper = code.Trim().ToUpperInvariant();
+        var now = DateTime.UtcNow;
+        var invite = await _db.Set<CompanyInvite>()
+            .Include(i => i.Company)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Code == upper && i.RevokedAt == null && i.ExpiresAt > now && i.UsesCount < i.MaxUses, cancellationToken);
+        if (invite is null) return Json(new { error = "Invalid or expired code." });
+        return Json(new { companyName = invite.Company!.Name, role = invite.Role });
     }
 
     [HttpGet("/forgot-password")]

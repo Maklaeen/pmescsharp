@@ -524,9 +524,9 @@
                     <div class="text-[13px] font-bold text-white truncate">@displayName</div>
                     <div class="text-[10px] font-bold text-gray-600 truncate uppercase tracking-wider mt-0.5">@char.ToUpperInvariant(roleName[0])@roleName.Substring(1)</div>
                 </div>
-                <form method="post" action="/logout" data-confirm="Are you sure you want to log out?" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                <form method="post" action="/logout" data-confirm="Are you sure you want to log out?" class="flex-shrink-0">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="p-2 text-gray-500 hover:text-red-400 transition-colors">
+                    <button type="submit" class="p-2 text-gray-500 hover:text-red-400 transition-colors" title="Log out">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     </button>
                 </form>
@@ -685,15 +685,48 @@
 </div>
 
 <script>
-    // ── Confirm dialogs — MUST be first so it can cancel before loader/button handlers fire
+    // ── Confirm dialogs — custom modal, capture phase so it fires before loader/button handlers
     (function () {
+        var modal = null;
+        var pendingForm = null;
+
+        function getModal() {
+            if (modal) return modal;
+            modal = document.getElementById('confirm-modal');
+            return modal;
+        }
+
         document.addEventListener('submit', function (e) {
             var msg = e.target.dataset.confirm;
-            if (msg && !confirm(msg)) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
+            if (!msg) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            pendingForm = e.target;
+            var m = getModal();
+            m.querySelector('#confirm-modal-msg').textContent = msg;
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }, true);
+
+        window._confirmProceed = function () {
+            var m = getModal();
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+            if (pendingForm) {
+                var f = pendingForm;
+                pendingForm = null;
+                // Remove data-confirm so it doesn't loop
+                delete f.dataset.confirm;
+                f.submit();
             }
-        }, true); // capture phase — runs before all bubble-phase listeners
+        };
+
+        window._confirmCancel = function () {
+            var m = getModal();
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+            pendingForm = null;
+        };
     })();
 </script>
 <script>
@@ -879,6 +912,27 @@
 
     // confirm dialogs handled above in capture phase
 </script>
+
+<!-- ── Confirm Modal ─────────────────────────────────────────────────────── -->
+<div id="confirm-modal" class="hidden fixed inset-0 z-[9999] bg-black/70 items-center justify-center p-4">
+    <div class="bg-[#111114] border border-white/[0.08] rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+        <div class="w-14 h-14 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-orange-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-extrabold text-white">Are you sure?</h3>
+        <p id="confirm-modal-msg" class="text-gray-400 text-sm mt-2 leading-relaxed"></p>
+        <div class="flex gap-3 mt-6">
+            <button onclick="_confirmCancel()" class="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-gray-300 transition-all">
+                Cancel
+            </button>
+            <button onclick="_confirmProceed()" class="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-700 text-white transition-all shadow-lg shadow-orange-900/20">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- ── Offline / Session-expired / Request-timeout banners ───────────────── -->
 <div id="offline-banner" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 bg-gray-900 border border-gray-700 text-gray-200 text-sm font-semibold px-5 py-3 rounded-2xl shadow-2xl">

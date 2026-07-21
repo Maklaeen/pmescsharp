@@ -89,7 +89,7 @@
                     <img src="/images/LOGO.png" alt="PMES Logo" class="h-10 w-auto object-contain" />
                 </div>
                 <h1 class="text-3xl font-black text-white tracking-tight">Create your account</h1>
-                <p class="text-gray-500 text-sm mt-2">You'll be set up as the <span class="text-orange-400 font-semibold">Admin</span> of your company</p>
+                <p class="text-gray-500 text-sm mt-2">Enter an invite code to join a company, or register as <span class="text-orange-400 font-semibold">Admin</span> of a new one</p>
             </div>
 
             <div class="bg-gray-900/80 border border-white/[0.06] rounded-2xl p-8 backdrop-blur-sm shadow-2xl" data-aos="fade-up" data-aos-duration="600" data-aos-delay="100">
@@ -115,9 +115,9 @@
                         <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Name)</span>
                     </div>
 
-                    <div>
+                    <div id="company-field">
                         <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Company Name</label>
-                        <input name="CompanyName" type="text" required value="@Model.CompanyName"
+                        <input id="companyNameInput" name="CompanyName" type="text" value="@Model.CompanyName"
                                class="w-full bg-gray-800/80 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 placeholder-gray-600 transition-all duration-200 hover:border-white/[0.12]"
                                placeholder="Your Company Inc.">
                         <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.CompanyName)</span>
@@ -171,6 +171,12 @@
                                 </svg>
                                 <span id="req-digit-text" class="text-gray-500">One digit (0-9)</span>
                             </div>
+                            <div class="flex items-center gap-2" id="req-special">
+                                <svg class="w-4 h-4 text-gray-500" id="req-special-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span id="req-special-text" class="text-gray-500">One special character (!@@#$%...)</span>
+                            </div>
                         </div>
                     </div>
 
@@ -189,6 +195,17 @@
                         <span class="text-red-400 text-xs mt-1.5 block" id="matchError"></span>
                         <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.ConfirmPassword)</span>
                         <span class="text-emerald-400 text-xs mt-1.5 block hidden" id="matchSuccess">✓ Passwords match</span>
+                    </div>
+
+                    <div id="code-field">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+                            Invitation Code <span class="normal-case font-normal text-gray-600">(optional)</span>
+                        </label>
+                        <input id="invitationCodeInput" name="InvitationCode" type="text" value="@Model.InvitationCode"
+                               class="w-full bg-gray-800/80 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 placeholder-gray-600 transition-all duration-200 hover:border-white/[0.12] font-mono tracking-widest uppercase"
+                               placeholder="XXXXXXXX" autocomplete="off">
+                        <div id="code-status" class="mt-1.5 text-xs hidden"></div>
+                        <p class="text-xs text-gray-600 mt-1.5">Have a code from your admin? Enter it to join their company.</p>
                     </div>
 
                     @if (!string.IsNullOrEmpty(siteKey))
@@ -273,12 +290,13 @@
                 const hasUpper = /[A-Z]/.test(pwd);
                 const hasLower = /[a-z]/.test(pwd);
                 const hasDigit = /[0-9]/.test(pwd);
+                const hasSpecial = /[^a-zA-Z0-9]/.test(pwd);
                 
-                // Update length requirement
                 updateRequirement('length', hasLength);
                 updateRequirement('upper', hasUpper);
                 updateRequirement('lower', hasLower);
                 updateRequirement('digit', hasDigit);
+                updateRequirement('special', hasSpecial);
                 
                 // Check confirm password match
                 if (confirmPasswordInput.value) {
@@ -349,6 +367,68 @@
                 }
             });
         }
+        // Company Name <-> Invitation Code mutual exclusion
+        const companyField = document.getElementById('company-field');
+        const codeField = document.getElementById('code-field');
+        const companyInput = document.getElementById('companyNameInput');
+        const codeInput = document.getElementById('invitationCodeInput');
+        const codeStatus = document.getElementById('code-status');
+        let lookupTimer = null;
+
+        function show(el) {
+            el.style.maxHeight = el.scrollHeight + 'px';
+            el.style.opacity = '1';
+            el.style.pointerEvents = '';
+        }
+
+        function hide(el) {
+            el.style.maxHeight = '0';
+            el.style.opacity = '0';
+            el.style.pointerEvents = 'none';
+        }
+
+        [companyField, codeField].forEach(el => {
+            el.style.transition = 'max-height 0.25s ease, opacity 0.2s ease';
+            el.style.overflow = 'hidden';
+        });
+
+        function syncFields() {
+            const hasCompany = companyInput.value.trim().length > 0;
+            const hasCode = codeInput.value.trim().length > 0;
+            hasCompany ? hide(codeField) : show(codeField);
+            hasCode ? hide(companyField) : show(companyField);
+            companyInput.required = !hasCode;
+            if (!hasCode) codeStatus.className = 'mt-1.5 text-xs hidden';
+        }
+
+        async function lookupCode(code) {
+            if (code.length < 8) { codeStatus.className = 'mt-1.5 text-xs hidden'; return; }
+            codeStatus.className = 'mt-1.5 text-xs text-gray-500';
+            codeStatus.textContent = 'Checking code...';
+            try {
+                const res = await fetch(`/register/lookup-code?code=${encodeURIComponent(code)}`);
+                const data = await res.json();
+                if (data.error) {
+                    codeStatus.className = 'mt-1.5 text-xs text-red-400';
+                    codeStatus.textContent = data.error;
+                } else {
+                    codeStatus.className = 'mt-1.5 text-xs text-emerald-400';
+                    codeStatus.textContent = `✓ Joining "${data.companyName}" as ${data.role}`;
+                }
+            } catch { codeStatus.className = 'mt-1.5 text-xs text-red-400'; codeStatus.textContent = 'Could not verify code.'; }
+        }
+
+        companyInput.addEventListener('input', syncFields);
+        codeInput.addEventListener('input', function () {
+            this.value = this.value.toUpperCase();
+            syncFields();
+            clearTimeout(lookupTimer);
+            lookupTimer = setTimeout(() => lookupCode(this.value.trim()), 500);
+        });
+
+        // Init on page load
+        syncFields();
+        if (codeInput.value.trim().length >= 8) lookupCode(codeInput.value.trim());
     </script>
 </body>
 </html>

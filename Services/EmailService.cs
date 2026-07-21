@@ -17,7 +17,7 @@ public class EmailService
             throw new InvalidOperationException("SMTP host is not configured.");
 
         var port = _config.GetValue<int>("Smtp:Port");
-        var enableSsl = _config.GetValue<bool>("Smtp:EnableSsl");   
+        var enableSsl = _config.GetValue<bool>("Smtp:EnableSsl");
         var from = _config["Smtp:From"];
         var username = _config["Smtp:Username"];
         var passwordRaw = _config["Smtp:Password"];
