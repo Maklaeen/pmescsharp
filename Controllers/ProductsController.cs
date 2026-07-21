@@ -13,27 +13,29 @@ public class ProductsController : Controller
     private readonly AppDbContext _db;
     private readonly ICurrentCompany _currentCompany;
     private readonly PmesCSharp.Services.EntitlementService _entitlements;
+    private readonly PmesCSharp.Services.IAuditLogger _audit;
 
-    public ProductsController(AppDbContext db, ICurrentCompany currentCompany, PmesCSharp.Services.EntitlementService entitlements)
+    public ProductsController(AppDbContext db, ICurrentCompany currentCompany, PmesCSharp.Services.EntitlementService entitlements, PmesCSharp.Services.IAuditLogger audit)
     {
         _db = db;
         _currentCompany = currentCompany;
         _entitlements = entitlements;
+        _audit = audit;
     }
 
     [HttpGet("/admin/products")]
-    public async Task<IActionResult> Index([FromQuery] int page = 1)
+    public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] bool archived = false)
     {
         const int pageSize = 12;
-        var products = await _db.Products
-            .OrderByDescending(p => p.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        var productsQuery = _db.Products.AsNoTracking().Where(p => p.IsArchived == archived).OrderByDescending(p => p.Id);
+        var products = await productsQuery.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-        var total = await _db.Products.CountAsync();
+        var total = await _db.Products.CountAsync(p => p.IsArchived == archived);
         ViewBag.Page = page;
         ViewBag.TotalPages = (int)Math.Ceiling(total / (double)pageSize);
+        ViewBag.ShowArchived = archived;
+        ViewBag.ArchivedCount = await _db.Products.CountAsync(p => p.IsArchived);
+        ViewBag.ActiveCount = await _db.Products.CountAsync(p => !p.IsArchived);
         return View(products);
     }
 
@@ -115,6 +117,8 @@ public class ProductsController : Controller
             return View("Edit", model);
         }
 
+        var before = new { product.ProductCode, product.ProductName, product.Description, product.UnitPrice, product.Unit, product.Status };
+
         product.ProductCode = model.ProductCode;
         product.ProductName = model.ProductName;
         product.Description = model.Description;
@@ -124,22 +128,47 @@ public class ProductsController : Controller
         product.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+        try
+        {
+            var details = $"Before: code={before.ProductCode},name={before.ProductName},price={before.UnitPrice}; After: code={product.ProductCode},name={product.ProductName},price={product.UnitPrice}";
+            await _audit.LogAsync("UpdateProduct", "Product", product.Id.ToString(), details);
+        }
+        catch { }
         TempData["Success"] = "Product updated successfully.";
         return Redirect("/admin/products");
     }
 
-    [HttpPost("/admin/products/{id:int}/delete")]
+    [HttpPost("/admin/products/{id:int}/status-archive")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Destroy(int id)
+    public async Task<IActionResult> Archive(int id)
     {
         var product = await _db.Products.FindAsync(id);
-        if (product is not null)
-        {
-            _db.Products.Remove(product);
-            await _db.SaveChangesAsync();
-        }
+        if (product is null) return NotFound();
 
-        TempData["Success"] = "Product deleted.";
+        product.IsArchived = true;
+        product.ArchivedAt = DateTime.UtcNow;
+        product.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        try { await _audit.LogAsync("product.archive", "Product", product.Id.ToString(), $"Archived product {product.ProductName}"); } catch { }
+        TempData["Success"] = "Product archived.";
         return Redirect("/admin/products");
+    }
+
+    [HttpPost("/admin/products/{id:int}/status-unarchive")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unarchive(int id)
+    {
+        var product = await _db.Products.FindAsync(id);
+        if (product is null) return NotFound();
+
+        product.IsArchived = false;
+        product.ArchivedAt = null;
+        product.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        try { await _audit.LogAsync("product.unarchive", "Product", product.Id.ToString(), $"Unarchived product {product.ProductName}"); } catch { }
+        TempData["Success"] = "Product unarchived.";
+        return Redirect("/admin/products?archived=true");
     }
 }

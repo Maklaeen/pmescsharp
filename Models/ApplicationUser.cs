@@ -18,6 +18,9 @@ public class ApplicationUser : IdentityUser
     public int? CompanyId { get; set; }
     public Company? Company { get; set; }
 
+    public DateTime? LastPasswordChangedAt { get; set; }
+    public bool RequiresPasswordReset { get; set; } = false;
+
     public DateTime? DateOfBirth { get; set; }
 
     [StringLength(20)]

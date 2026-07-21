@@ -6,6 +6,7 @@ using PmesCSharp.Data;
 using PmesCSharp.Models;
 using PmesCSharp.Services;
 using PmesCSharp.ViewModels.Company;
+using System.Collections.Generic;
 
 namespace PmesCSharp.Controllers;
 
@@ -52,6 +53,22 @@ public class CompanyController : Controller
         if (company is null) return NotFound();
 
         var profile = await _db.CompanyProfiles.FirstOrDefaultAsync(p => p.CompanyId == companyId);
+        var users = await _userManager.Users
+            .Where(u => u.CompanyId == companyId)
+            .ToListAsync();
+
+        var userItems = new List<CompanyProfileUserViewModel>();
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            userItems.Add(new CompanyProfileUserViewModel
+            {
+                Name = string.IsNullOrWhiteSpace(user.FullName) ? user.Email ?? "Unknown" : user.FullName,
+                Email = user.Email ?? "",
+                Role = roles.FirstOrDefault() ?? "unassigned"
+            });
+        }
+
         var vm = new CompanyProfileViewModel
         {
             DisplayName = profile?.DisplayName ?? company.Name,
@@ -60,6 +77,7 @@ public class CompanyController : Controller
             Email = profile?.Email,
             Website = profile?.Website,
             Industry = profile?.Industry,
+            Users = userItems,
         };
 
         return View(vm);
@@ -77,12 +95,65 @@ public class CompanyController : Controller
             return Forbid();
 
         if (!ModelState.IsValid)
+        {
+            var users = await _userManager.Users
+                .Where(u => u.CompanyId == companyId)
+                .ToListAsync();
+
+            var userItems = new List<CompanyProfileUserViewModel>();
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                userItems.Add(new CompanyProfileUserViewModel
+                {
+                    Name = string.IsNullOrWhiteSpace(user.FullName) ? user.Email ?? "Unknown" : user.FullName,
+                    Email = user.Email ?? "",
+                    Role = roles.FirstOrDefault() ?? "unassigned"
+                });
+            }
+
+            model.Users = userItems;
+            var companyShort = await _db.Companies.FirstOrDefaultAsync(c => c.Id == companyId);
+            var profileShort = await _db.CompanyProfiles.FirstOrDefaultAsync(p => p.CompanyId == companyId);
+            ViewBag.ProfileUpdatedAt = (profileShort?.UpdatedAt ?? companyShort?.UpdatedAt)?.ToString("MMMM dd, yyyy");
             return View("Profile", model);
+        }
 
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == companyId, cancellationToken);
         if (company is null) return NotFound();
 
         var profile = await _db.CompanyProfiles.FirstOrDefaultAsync(p => p.CompanyId == companyId, cancellationToken);
+        if (profile is not null)
+        {
+            var nextAllowed = profile.UpdatedAt.AddMonths(1);
+            if (DateTime.UtcNow < nextAllowed)
+            {
+                TempData["Error"] = $"Company profile can only be updated once every 30 days. You can update it again on {nextAllowed:MMMM dd, yyyy}.";
+
+                ViewBag.NextAllowed = nextAllowed.ToString("MMMM dd, yyyy");
+                ViewBag.ProfileUpdatedAt = profile.UpdatedAt.ToString("MMMM dd, yyyy");
+
+                var users = await _userManager.Users
+                    .Where(u => u.CompanyId == companyId)
+                    .ToListAsync();
+
+                var userItems = new List<CompanyProfileUserViewModel>();
+                foreach (var user in users)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    userItems.Add(new CompanyProfileUserViewModel
+                    {
+                        Name = string.IsNullOrWhiteSpace(user.FullName) ? user.Email ?? "Unknown" : user.FullName,
+                        Email = user.Email ?? "",
+                        Role = roles.FirstOrDefault() ?? "unassigned"
+                    });
+                }
+
+                model.Users = userItems;
+                return View("Profile", model);
+            }
+        }
+
         if (profile is null)
         {
             profile = new CompanyProfile
@@ -110,6 +181,7 @@ public class CompanyController : Controller
             profile.UpdatedAt = DateTime.UtcNow;
         }
 
+        company.Name = string.IsNullOrWhiteSpace(model.DisplayName) ? company.Name : model.DisplayName;
         company.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 

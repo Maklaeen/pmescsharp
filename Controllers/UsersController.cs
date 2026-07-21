@@ -55,7 +55,7 @@ public class UsersController : Controller
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            userRoles[user.Id] = roles.FirstOrDefault() ?? "admin";
+            userRoles[user.Id] = roles.FirstOrDefault() ?? "unassigned";
         }
 
         var totalUsers = await query.CountAsync();
@@ -180,11 +180,12 @@ public class UsersController : Controller
     {
         ViewBag.Roles = GetAssignableRoles();
 
+        var requestedRole = model.Role?.Trim();
         var assignable = (string[])ViewBag.Roles;
-        if (!string.IsNullOrWhiteSpace(model.Role) && !assignable.Contains(model.Role))
+        if (!string.IsNullOrWhiteSpace(requestedRole) && !assignable.Contains(requestedRole))
             ModelState.AddModelError(nameof(model.Role), "Invalid role.");
 
-        if (string.Equals(model.Role, "superadmin", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(requestedRole, "superadmin", StringComparison.OrdinalIgnoreCase))
         {
             var superAdminEmail = _configuration["Seed:SuperAdminEmail"];
             if (!User.IsInRole("superadmin") || !string.Equals(model.Email, superAdminEmail, StringComparison.OrdinalIgnoreCase))
@@ -221,10 +222,10 @@ public class UsersController : Controller
             return View("Create", model);
         }
 
-        if (!string.IsNullOrWhiteSpace(model.Role))
-            await _userManager.AddToRoleAsync(user, model.Role);
+        if (!string.IsNullOrWhiteSpace(requestedRole))
+            await _userManager.AddToRoleAsync(user, requestedRole);
 
-        await _audit.LogAsync("user.create", "User", user.Id, $"Created user {user.Email}; role={model.Role}");
+        await _audit.LogAsync("user.create", "User", user.Id, $"Created user {user.Email}; role={requestedRole}");
         TempData["Success"] = "User created successfully.";
         return Redirect("/users");
     }
@@ -255,7 +256,7 @@ public class UsersController : Controller
             Role = roles.FirstOrDefault()
         };
 
-        ViewBag.Roles = AllRoles;
+        ViewBag.Roles = GetAssignableRoles();
         ViewBag.UserId = id;
         return View(vm);
     }
@@ -265,7 +266,7 @@ public class UsersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(string id, UserFormViewModel model)
     {
-        ViewBag.Roles = AllRoles;
+        ViewBag.Roles = GetAssignableRoles();
         ViewBag.UserId = id;
 
         if (!ModelState.IsValid)
@@ -295,14 +296,15 @@ public class UsersController : Controller
         await _userManager.UpdateAsync(user);
 
         // Update role
+        var requestedRole = model.Role?.Trim();
         var assignable = GetAssignableRoles();
-        if (!string.IsNullOrWhiteSpace(model.Role) && !assignable.Contains(model.Role))
+        if (!string.IsNullOrWhiteSpace(requestedRole) && !assignable.Contains(requestedRole))
         {
             TempData["Error"] = "Invalid role.";
             return Redirect($"/users/{id}/edit");
         }
 
-        if (string.Equals(model.Role, "superadmin", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(requestedRole, "superadmin", StringComparison.OrdinalIgnoreCase))
         {
             var superAdminEmail = _configuration["Seed:SuperAdminEmail"];
             if (!User.IsInRole("superadmin") || !string.Equals(model.Email, superAdminEmail, StringComparison.OrdinalIgnoreCase))
@@ -314,8 +316,8 @@ public class UsersController : Controller
 
         var currentRoles = await _userManager.GetRolesAsync(user);
         await _userManager.RemoveFromRolesAsync(user, currentRoles);
-        if (!string.IsNullOrWhiteSpace(model.Role))
-            await _userManager.AddToRoleAsync(user, model.Role);
+        if (!string.IsNullOrWhiteSpace(requestedRole))
+            await _userManager.AddToRoleAsync(user, requestedRole);
 
         // Update password if provided
         if (!string.IsNullOrWhiteSpace(model.Password))

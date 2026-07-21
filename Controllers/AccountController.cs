@@ -177,17 +177,79 @@ public class AccountController : Controller
             return View(model);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
-        if (!result.Succeeded)
+        if (!user.LockoutEnabled)
         {
-            ModelState.AddModelError(string.Empty, "These credentials do not match our records.");
+            user.LockoutEnabled = true;
+            await _userManager.UpdateAsync(user);
+        }
+
+        if (user.RequiresPasswordReset)
+        {
+            ModelState.AddModelError(string.Empty, "Your account requires a password reset before you can sign in. Please use the Forgot Password link.");
+            ViewBag.RequirePasswordReset = true;
             return View(model);
         }
 
-        await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
-        var roles = await _userManager.GetRolesAsync(user);
-        await _audit.LogAsync("user.login", "User", user.Id, $"Login via password: {user.Email}", cancellationToken);
-        return Redirect(ResolveDashboardPath(roles));
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
+            if (lockoutEnd.HasValue)
+            {
+                var remaining = lockoutEnd.Value.UtcDateTime - DateTime.UtcNow;
+                if (remaining.TotalSeconds > 0)
+                {
+                    ViewBag.CooldownSeconds = (int)Math.Ceiling(remaining.TotalSeconds);
+                    ModelState.AddModelError(string.Empty, "Too many failed login attempts. Please wait before trying again.");
+                    return View(model);
+                }
+            }
+
+            await _userManager.ResetAccessFailedCountAsync(user);
+            await _userManager.SetLockoutEndDateAsync(user, null);
+        }
+
+        var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
+        if (result.Succeeded)
+        {
+            await _userManager.ResetAccessFailedCountAsync(user);
+            user.RequiresPasswordReset = false;
+            await _userManager.UpdateAsync(user);
+            await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
+            var roles = await _userManager.GetRolesAsync(user);
+            await _audit.LogAsync("user.login", "User", user.Id, $"Login via password: {user.Email}", cancellationToken);
+            return Redirect(ResolveDashboardPath(roles));
+        }
+
+        await _userManager.AccessFailedAsync(user);
+        var failedCount = await _userManager.GetAccessFailedCountAsync(user);
+
+        if (failedCount >= 3 && failedCount < 4)
+        {
+            var lockoutEnd = DateTimeOffset.UtcNow.AddMinutes(1);
+            await _userManager.SetLockoutEndDateAsync(user, lockoutEnd);
+            ModelState.AddModelError(string.Empty, "Too many failed login attempts. Please wait 1 minute before trying again.");
+            ViewBag.CooldownSeconds = 60;
+            return View(model);
+        }
+
+        if (failedCount == 4)
+        {
+            ModelState.AddModelError(string.Empty, "Your account may need a password reset. If you continue to have trouble, please reset your password.");
+            ViewBag.PasswordResetRecommended = true;
+            return View(model);
+        }
+
+        if (failedCount >= 5)
+        {
+            user.RequiresPasswordReset = true;
+            await _userManager.UpdateAsync(user);
+            ModelState.AddModelError(string.Empty, "Too many failed login attempts. Please reset your password using the Forgot Password link.");
+            ViewBag.RequirePasswordReset = true;
+            return View(model);
+        }
+
+        ModelState.AddModelError(string.Empty, "These credentials do not match our records.");
+        return View(model);
     }
 
     [HttpGet("/register")]
@@ -578,6 +640,11 @@ public class AccountController : Controller
                 ModelState.AddModelError(string.Empty, error.Description);
             return View(model);
         }
+
+        user.RequiresPasswordReset = false;
+        user.LastPasswordChangedAt = DateTime.UtcNow;
+        await _userManager.ResetAccessFailedCountAsync(user);
+        await _userManager.UpdateAsync(user);
 
         await _audit.LogAsync("user.password.reset", "User", user.Id, $"Password reset via email link: {user.Email}", cancellationToken);
         TempData["Status"] = "Your password has been reset.";

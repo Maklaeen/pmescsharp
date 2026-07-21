@@ -13,27 +13,29 @@ public class MaterialsController : Controller
     private readonly AppDbContext _db;
     private readonly PmesCSharp.Services.EntitlementService _entitlements;
     private readonly ICurrentCompany _currentCompany;
+    private readonly PmesCSharp.Services.IAuditLogger _audit;
 
-    public MaterialsController(AppDbContext db, PmesCSharp.Services.EntitlementService entitlements, ICurrentCompany currentCompany)
+    public MaterialsController(AppDbContext db, PmesCSharp.Services.EntitlementService entitlements, ICurrentCompany currentCompany, PmesCSharp.Services.IAuditLogger audit)
     {
         _db = db;
         _entitlements = entitlements;
         _currentCompany = currentCompany;
+        _audit = audit;
     }
 
     [HttpGet("/admin/materials")]
-    public async Task<IActionResult> Index([FromQuery] int page = 1)
+    public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] bool archived = false)
     {
         const int pageSize = 15;
-        var materials = await _db.Materials
-            .OrderByDescending(m => m.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        var materialsQuery = _db.Materials.AsNoTracking().Where(m => m.IsArchived == archived).OrderByDescending(m => m.Id);
+        var materials = await materialsQuery.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-        var total = await _db.Materials.CountAsync();
+        var total = await _db.Materials.CountAsync(m => m.IsArchived == archived);
         ViewBag.Page = page;
         ViewBag.TotalPages = (int)Math.Ceiling(total / (double)pageSize);
+        ViewBag.ShowArchived = archived;
+        ViewBag.ArchivedCount = await _db.Materials.CountAsync(m => m.IsArchived);
+        ViewBag.ActiveCount = await _db.Materials.CountAsync(m => !m.IsArchived);
         return View(materials);
     }
 
@@ -115,6 +117,8 @@ public class MaterialsController : Controller
             return View("Edit", model);
         }
 
+        var before = new { material.MaterialCode, material.MaterialName, material.UnitCost, material.StockQuantity };
+
         material.MaterialCode = model.MaterialCode;
         material.MaterialName = model.MaterialName;
         material.Description = model.Description;
@@ -126,22 +130,45 @@ public class MaterialsController : Controller
         material.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+        try
+        {
+            var details = $"Before: code={before.MaterialCode},name={before.MaterialName},cost={before.UnitCost},stock={before.StockQuantity}; After: code={material.MaterialCode},name={material.MaterialName},cost={material.UnitCost},stock={material.StockQuantity}";
+            await _audit.LogAsync("UpdateMaterial", "Material", material.Id.ToString(), details);
+        }
+        catch { }
         TempData["Success"] = "Material updated successfully.";
         return Redirect("/admin/materials");
     }
 
-    [HttpPost("/admin/materials/{id:int}/delete")]
+    [HttpPost("/admin/materials/{id:int}/status-archive")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Destroy(int id)
+    public async Task<IActionResult> Archive(int id)
     {
         var material = await _db.Materials.FindAsync(id);
-        if (material is not null)
-        {
-            _db.Materials.Remove(material);
-            await _db.SaveChangesAsync();
-        }
+        if (material is null) return NotFound();
 
-        TempData["Success"] = "Material deleted.";
+        material.IsArchived = true;
+        material.ArchivedAt = DateTime.UtcNow;
+        material.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        try { await _audit.LogAsync("material.archive", "Material", material.Id.ToString(), $"Archived material {material.MaterialName}"); } catch { }
+        TempData["Success"] = "Material archived.";
         return Redirect("/admin/materials");
+    }
+
+    [HttpPost("/admin/materials/{id:int}/status-unarchive")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unarchive(int id)
+    {
+        var material = await _db.Materials.FindAsync(id);
+        if (material is null) return NotFound();
+
+        material.IsArchived = false;
+        material.ArchivedAt = null;
+        material.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        try { await _audit.LogAsync("material.unarchive", "Material", material.Id.ToString(), $"Unarchived material {material.MaterialName}"); } catch { }
+        TempData["Success"] = "Material unarchived.";
+        return Redirect("/admin/materials?archived=true");
     }
 }

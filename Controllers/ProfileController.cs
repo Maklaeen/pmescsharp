@@ -103,12 +103,14 @@ public class ProfileController : Controller
             return Redirect("/profile");
         }
 
-        // Google sign-in users with no password — use AddPasswordAsync instead
         if (string.IsNullOrWhiteSpace(user.PasswordHash))
         {
             var addResult = await _userManager.AddPasswordAsync(user, model.Password);
             if (addResult.Succeeded)
             {
+                user.LastPasswordChangedAt = DateTime.UtcNow;
+                user.RequiresPasswordReset = false;
+                await _userManager.UpdateAsync(user);
                 await _signInManager.RefreshSignInAsync(user);
                 await _audit.LogAsync("user.password.set", "User", user.Id, "Set password for account");
                 TempData["Success"] = "Password set successfully. You can now log in with email and password.";
@@ -120,9 +122,19 @@ public class ProfileController : Controller
             return Redirect("/profile");
         }
 
+        if (user.LastPasswordChangedAt.HasValue && user.LastPasswordChangedAt.Value > DateTime.UtcNow.AddMonths(-1))
+        {
+            var nextChange = user.LastPasswordChangedAt.Value.AddMonths(1);
+            TempData["Error"] = $"Password can only be changed once every 30 days. You can change it again on {nextChange:MMMM dd, yyyy}.";
+            return Redirect("/profile");
+        }
+
         var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.Password);
         if (result.Succeeded)
         {
+            user.LastPasswordChangedAt = DateTime.UtcNow;
+            user.RequiresPasswordReset = false;
+            await _userManager.UpdateAsync(user);
             await _signInManager.RefreshSignInAsync(user);
             await _audit.LogAsync("user.password.change", "User", user.Id, "Changed password for account");
             TempData["Success"] = "Password changed successfully.";

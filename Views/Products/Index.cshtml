@@ -26,9 +26,17 @@
             <h2 class="text-2xl font-bold text-white tracking-tight">Product Catalog</h2>
             <p class="text-sm text-gray-500 mt-1">Manage finished goods and SKU details.</p>
         </div>
-        <a href="/admin/products/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
-            Create Product
-        </a>
+        <div class="flex items-center gap-3">
+            @if (!(ViewBag.ShowArchived == true))
+            {
+                <a href="/admin/products?archived=true" class="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] text-sm font-semibold rounded-xl border border-white/[0.05] text-gray-300">Archived (@(ViewBag.ArchivedCount ?? 0))</a>
+            }
+            else
+            {
+                <a href="/admin/products" class="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] text-sm font-semibold rounded-xl border border-white/[0.05] text-gray-300">Back to active</a>
+            }
+            <a href="/admin/products/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Create Product</a>
+        </div>
     </div>
 
     @if (Model.Count == 0)
@@ -60,15 +68,21 @@
                     <div class="flex items-center justify-between pt-6 border-t border-white/[0.05]">
                         <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Code: @product.ProductCode</div>
                         <div class="inline-flex items-center gap-2">
-                            <a href="/admin/products/@product.Id/edit" class="text-orange-500 hover:text-orange-400 transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-                            </a>
-                            <form method="post" action="/admin/products/@product.Id/delete" onsubmit="return confirm('Delete this product?');" class="inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="text-red-400 hover:text-red-300 transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                </button>
-                            </form>
+                            <a href="/admin/products/@product.Id/edit" class="px-3 py-1 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] rounded-lg text-sm font-semibold text-orange-500 transition">Edit</a>
+                            @if (ViewBag.ShowArchived == true)
+                            {
+                                <form method="post" action="/admin/products/@product.Id/status-unarchive" onsubmit="return confirm('Unarchive this product?');" class="inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all">Unarchive</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form method="post" action="/admin/products/@product.Id/status-archive" onsubmit="return confirm('Archive this product?');" class="inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Archive</button>
+                                </form>
+                            }
                         </div>
                     </div>
                 </div>

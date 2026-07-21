@@ -12,28 +12,28 @@ public class BomController : Controller
 {
     private readonly AppDbContext _db;
     private readonly ICurrentCompany _currentCompany;
+    private readonly PmesCSharp.Services.IAuditLogger _audit;
 
-    public BomController(AppDbContext db, ICurrentCompany currentCompany)
+    public BomController(AppDbContext db, ICurrentCompany currentCompany, PmesCSharp.Services.IAuditLogger audit)
     {
         _db = db;
         _currentCompany = currentCompany;
+        _audit = audit;
     }
 
     [HttpGet("/admin/bom")]
-    public async Task<IActionResult> Index([FromQuery] int page = 1)
+    public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] bool archived = false)
     {
         const int pageSize = 15;
-        var lines = await _db.BillOfMaterials
-            .Include(b => b.Product)
-            .Include(b => b.Material)
-            .OrderByDescending(b => b.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        var linesQuery = _db.BillOfMaterials.AsNoTracking().Include(b => b.Product).Include(b => b.Material).Where(b => b.IsArchived == archived).OrderByDescending(b => b.Id);
+        var lines = await linesQuery.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-        var total = await _db.BillOfMaterials.CountAsync();
+        var total = await _db.BillOfMaterials.CountAsync(b => b.IsArchived == archived);
         ViewBag.Page = page;
         ViewBag.TotalPages = (int)Math.Ceiling(total / (double)pageSize);
+        ViewBag.ShowArchived = archived;
+        ViewBag.ArchivedCount = await _db.BillOfMaterials.CountAsync(b => b.IsArchived);
+        ViewBag.ActiveCount = await _db.BillOfMaterials.CountAsync(b => !b.IsArchived);
         return View(lines);
     }
 
@@ -119,6 +119,8 @@ public class BomController : Controller
         }
 
         var material = await _db.Materials.FindAsync(model.MaterialId);
+        var before = new { line.ProductId, line.MaterialId, line.QuantityRequired, line.Unit };
+
         line.ProductId = model.ProductId;
         line.MaterialId = model.MaterialId;
         line.QuantityRequired = model.QuantityRequired;
@@ -126,23 +128,46 @@ public class BomController : Controller
         line.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+        try
+        {
+            var details = $"Before: product={before.ProductId},material={before.MaterialId},qty={before.QuantityRequired},unit={before.Unit}; After: product={line.ProductId},material={line.MaterialId},qty={line.QuantityRequired},unit={line.Unit}";
+            await _audit.LogAsync("UpdateBom", "BillOfMaterial", line.Id.ToString(), details);
+        }
+        catch { }
         TempData["Success"] = "BOM line updated.";
         return Redirect("/admin/bom");
     }
 
-    [HttpPost("/admin/bom/{id:int}/delete")]
+    [HttpPost("/admin/bom/{id:int}/status-archive")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Destroy(int id)
+    public async Task<IActionResult> Archive(int id)
     {
         var line = await _db.BillOfMaterials.FindAsync(id);
-        if (line is not null)
-        {
-            _db.BillOfMaterials.Remove(line);
-            await _db.SaveChangesAsync();
-        }
+        if (line is null) return NotFound();
 
-        TempData["Success"] = "BOM line deleted.";
+        line.IsArchived = true;
+        line.ArchivedAt = DateTime.UtcNow;
+        line.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        try { await _audit.LogAsync("bom.archive", "BillOfMaterial", line.Id.ToString(), $"Archived BOM line {line.Id}"); } catch { }
+        TempData["Success"] = "BOM line archived.";
         return Redirect("/admin/bom");
+    }
+
+    [HttpPost("/admin/bom/{id:int}/status-unarchive")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unarchive(int id)
+    {
+        var line = await _db.BillOfMaterials.FindAsync(id);
+        if (line is null) return NotFound();
+
+        line.IsArchived = false;
+        line.ArchivedAt = null;
+        line.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        try { await _audit.LogAsync("bom.unarchive", "BillOfMaterial", line.Id.ToString(), $"Unarchived BOM line {line.Id}"); } catch { }
+        TempData["Success"] = "BOM line unarchived.";
+        return Redirect("/admin/bom?archived=true");
     }
 
     private async Task LoadDropdowns()

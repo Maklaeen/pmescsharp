@@ -62,7 +62,7 @@
                 }
                 @foreach (var user in Model)
                 {
-                    var role = userRoles.GetValueOrDefault(user.Id, "superadmin");
+                    var role = userRoles.GetValueOrDefault(user.Id, "unassigned");
                     var initials = new string((user.FullName ?? user.Email ?? "?").Take(2).ToArray()).ToUpperInvariant();
                     <tr class="bg-white/[0.02] hover:bg-white/[0.05] transition-colors group">
                         <td class="px-6 py-5 rounded-l-2xl border-y border-l border-white/[0.05]">

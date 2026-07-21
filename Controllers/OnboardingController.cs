@@ -54,6 +54,16 @@ public class OnboardingController : Controller
         if (company is null) return Redirect("/admin");
 
         var profile = await _db.CompanyProfiles.FirstOrDefaultAsync(p => p.CompanyId == companyId, ct);
+        if (profile is not null)
+        {
+            var nextAllowed = profile.UpdatedAt.AddMonths(1);
+            if (DateTime.UtcNow < nextAllowed)
+            {
+                TempData["Error"] = $"Company profile can only be updated once every 30 days. You can update it again on {nextAllowed:MMMM dd, yyyy}.";
+                return Redirect("/onboarding/company");
+            }
+        }
+
         if (profile is null)
         {
             profile = new CompanyProfile

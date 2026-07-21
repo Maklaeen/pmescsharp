@@ -108,9 +108,9 @@
                 @Html.AntiForgeryToken()
                 @if (hasPassword)
                 {
-                    <div>
+                    <div class="relative">
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Current Password</label>
-                        <input type="password" name="CurrentPassword" required
+                        <input id="profileCurrentPassword" type="password" name="CurrentPassword" required
                             class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
                             placeholder="••••••••">
                     </div>
@@ -122,16 +122,21 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">New Password</label>
-                        <input type="password" name="Password" required
+                        <input id="profileNewPassword" type="password" name="Password" required
                             class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
                             placeholder="••••••••">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Confirm New Password</label>
-                        <input type="password" name="PasswordConfirmation" required
+                        <input id="profileConfirmPassword" type="password" name="PasswordConfirmation" required
                             class="w-full bg-black/20 border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
                             placeholder="••••••••">
                     </div>
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" id="toggleProfilePasswords" onclick="toggleAllProfilePasswords()" class="text-sm text-orange-400 hover:text-orange-300 font-semibold transition">
+                        Show password
+                    </button>
                 </div>
                 <div class="pt-2">
                     <button type="submit" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
@@ -279,5 +284,31 @@
     document.getElementById('delete-modal').addEventListener('click', function(e) {
         if (e.target === this) closeDeleteModal();
     });
+
+    function togglePassword(inputId, buttonId) {
+        const input = document.getElementById(inputId);
+        const button = document.getElementById(buttonId);
+        if (!input || !button) return;
+
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        button.innerHTML = isHidden ? eyeOffIcon : eyeIcon;
+        button.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    }
+
+    let profilePasswordsVisible = false;
+    function toggleAllProfilePasswords() {
+        profilePasswordsVisible = !profilePasswordsVisible;
+        const fieldIds = ['profileCurrentPassword', 'profileNewPassword', 'profileConfirmPassword'];
+        fieldIds.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) input.type = profilePasswordsVisible ? 'text' : 'password';
+        });
+        const button = document.getElementById('toggleProfilePasswords');
+        if (button) button.textContent = profilePasswordsVisible ? 'Hide password' : 'Show password';
+    }
+
+    const eyeIcon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.944 9.543 7-1.275 4.057-5.065 7-9.543 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`;
+    const eyeOffIcon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.944-9.543-7a10.033 10.033 0 012.223-3.607m2.39-1.89A9.965 9.965 0 0112 5c4.478 0 8.268 2.944 9.543 7a10.01 10.01 0 01-4.15 5.18" /><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" /></svg>`;
 </script>
 }

@@ -21,14 +21,22 @@
 }
 
 <div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
-    <div class="flex items-center justify-between mb-10">
+        <div class="flex items-center justify-between mb-10">
         <div>
             <h2 class="text-2xl font-bold text-white tracking-tight">Materials</h2>
             <p class="text-sm text-gray-500 mt-1">Maintain raw materials, unit costs, and on-hand stock.</p>
         </div>
-        <a href="/admin/materials/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
-            Add Material
-        </a>
+        <div class="flex items-center gap-3">
+            @if (!(ViewBag.ShowArchived == true))
+            {
+                <a href="/admin/materials?archived=true" class="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] text-sm font-semibold rounded-xl border border-white/[0.05] text-gray-300">Archived (@(ViewBag.ArchivedCount ?? 0))</a>
+            }
+            else
+            {
+                <a href="/admin/materials" class="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] text-sm font-semibold rounded-xl border border-white/[0.05] text-gray-300">Back to active</a>
+            }
+            <a href="/admin/materials/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Add Material</a>
+        </div>
     </div>
 
     <div class="overflow-x-auto">
@@ -81,10 +89,20 @@
                         <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
                             <div class="inline-flex items-center gap-2">
                                 <a href="/admin/materials/@m.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
-                                <form method="post" action="/admin/materials/@m.Id/delete" onsubmit="return confirm('Delete this material?');" class="inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Delete</button>
-                                </form>
+                                @if (ViewBag.ShowArchived == true)
+                                {
+                                    <form method="post" action="/admin/materials/@m.Id/status-unarchive" onsubmit="return confirm('Unarchive this material?');" class="inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all">Unarchive</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" action="/admin/materials/@m.Id/status-archive" onsubmit="return confirm('Archive this material?');" class="inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Archive</button>
+                                    </form>
+                                }
                             </div>
                         </td>
                     </tr>

@@ -30,6 +30,9 @@ public class Product
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    public bool IsArchived { get; set; } = false;
+    public DateTime? ArchivedAt { get; set; }
+
     public ICollection<BillOfMaterial> BillOfMaterials { get; set; } = [];
     public ICollection<ProductionSchedule> ProductionSchedules { get; set; } = [];
 }

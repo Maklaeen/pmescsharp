@@ -19,9 +19,17 @@
             <h2 class="text-2xl font-bold text-white tracking-tight">Bill of Materials</h2>
             <p class="text-sm text-gray-500 mt-1">Define required materials per 1 unit of finished product.</p>
         </div>
-        <a href="/admin/bom/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">
-            Add BOM Line
-        </a>
+        <div class="flex items-center gap-3">
+            @if (!(ViewBag.ShowArchived == true))
+            {
+                <a href="/admin/bom?archived=true" class="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] text-sm font-semibold rounded-xl border border-white/[0.05] text-gray-300">Archived (@(ViewBag.ArchivedCount ?? 0))</a>
+            }
+            else
+            {
+                <a href="/admin/bom" class="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] text-sm font-semibold rounded-xl border border-white/[0.05] text-gray-300">Back to active</a>
+            }
+            <a href="/admin/bom/create" class="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-900/20">Add BOM Line</a>
+        </div>
     </div>
 
     <div class="overflow-x-auto">
@@ -62,10 +70,20 @@
                         <td class="px-6 py-5 rounded-r-2xl border-y border-r border-white/[0.05] text-right">
                             <div class="inline-flex items-center gap-2">
                                 <a href="/admin/bom/@line.Id/edit" class="px-4 py-2 text-xs font-bold rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] text-white transition-all">Edit</a>
-                                <form method="post" action="/admin/bom/@line.Id/delete" onsubmit="return confirm('Delete this BOM line?');" class="inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Delete</button>
-                                </form>
+                                @if (ViewBag.ShowArchived == true)
+                                {
+                                    <form method="post" action="/admin/bom/@line.Id/status-unarchive" onsubmit="return confirm('Unarchive this BOM line?');" class="inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all">Unarchive</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" action="/admin/bom/@line.Id/status-archive" onsubmit="return confirm('Archive this BOM line?');" class="inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="px-4 py-2 text-xs font-bold rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all">Archive</button>
+                                    </form>
+                                }
                             </div>
                         </td>
                     </tr>

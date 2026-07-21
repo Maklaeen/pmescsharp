@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace PmesCSharp.ViewModels.Company;
@@ -16,9 +17,19 @@ public class CompanyProfileViewModel
     [EmailAddress, StringLength(200)]
     public string? Email { get; set; }
 
-    [Url, StringLength(200)]
+    [RegularExpression(@"^(?:https?://|ftp://)?(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?:\:\d+)?(?:/.*)?$", ErrorMessage = "The Website must be a valid URL like example.com or https://example.com.")]
+    [StringLength(200)]
     public string? Website { get; set; }
 
     [StringLength(200)]
     public string? Industry { get; set; }
+
+    public List<CompanyProfileUserViewModel> Users { get; set; } = new();
+}
+
+public class CompanyProfileUserViewModel
+{
+    public string Name { get; set; } = "";
+    public string Email { get; set; } = "";
+    public string Role { get; set; } = "";
 }

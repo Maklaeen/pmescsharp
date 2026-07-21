@@ -102,6 +102,26 @@
                     }
                 }
 
+                @if (ViewBag.RequirePasswordReset == true)
+                {
+                    <div class="mb-5 text-orange-300 text-sm text-center bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-3">
+                        Your account requires a password reset before signing in. Use the Forgot Password link below.
+                    </div>
+                }
+                else if (ViewBag.PasswordResetRecommended == true)
+                {
+                    <div class="mb-5 text-yellow-300 text-sm text-center bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+                        Too many failed login attempts. We recommend resetting your password if you continue to have trouble.
+                    </div>
+                }
+
+                @if (ViewBag.CooldownSeconds != null)
+                {
+                    <div class="mb-5 text-blue-200 text-sm text-center bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3">
+                        Too many failed login attempts. Please wait <span id="cooldown-seconds">@ViewBag.CooldownSeconds</span> seconds before trying again.
+                    </div>
+                }
+
                 <form method="post" action="/login" class="space-y-5">
                     @Html.AntiForgeryToken()
                     <div>
@@ -111,9 +131,9 @@
                                placeholder="you@example.com">
                         <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Email)</span>
                     </div>
-                    <div>
+                    <div class="relative">
                         <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Password</label>
-                        <input name="Password" type="password" required
+                        <input id="loginPassword" name="Password" type="password" required
                                class="w-full bg-gray-800/80 border border-white/[0.08] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 placeholder-gray-600 transition-all duration-200"
                                placeholder="••••••••">
                         <span class="text-red-400 text-xs mt-1.5 block">@Html.ValidationMessageFor(m => m.Password)</span>
@@ -190,6 +210,21 @@
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
             if ((localStorage.getItem(THEME_KEY) || 'system') === 'system') applyTheme('system');
         });
+
+        const cooldownElement = document.getElementById('cooldown-seconds');
+        if (cooldownElement) {
+            let seconds = parseInt(cooldownElement.textContent || '0', 10);
+            const interval = setInterval(() => {
+                seconds -= 1;
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    cooldownElement.textContent = '0';
+                    window.location.reload();
+                    return;
+                }
+                cooldownElement.textContent = seconds.toString();
+            }, 1000);
+        }
     </script>
 </body>
 </html>

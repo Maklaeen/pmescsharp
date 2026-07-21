@@ -92,7 +92,7 @@ public class DashboardController : Controller
             Products = await _db.Products.CountAsync(),
             Materials = await _db.Materials.CountAsync(),
             WorkOrdersDisplay = (await _db.WorkOrders.CountAsync()).ToString(),
-            CompanyName = companyId <= 0 ? "" : company.Name,
+            CompanyName = companyId <= 0 ? "" : profile?.DisplayName ?? company.Name,
             NeedsCompanyProfileSetup = companyId > 0 && profile is null,
             WorkOrdersInProgress = await _db.WorkOrders.CountAsync(w => w.Status == "ongoing"),
             SchedulesInProgress = await _db.ProductionSchedules.CountAsync(s => s.Status == "in_progress"),
