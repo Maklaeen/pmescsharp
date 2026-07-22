@@ -36,12 +36,12 @@ public class InvitesController : Controller
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
-        if (!User.IsInRole("superadmin") && companyId <= 0) return Forbid();
+            if (!User.IsInRole("admin") || companyId <= 0) return Forbid();
 
         var now = DateTime.UtcNow;
         var invites = await _db.Set<CompanyInvite>()
             .AsNoTracking()
-            .Where(i => User.IsInRole("superadmin") || i.CompanyId == companyId)
+            .Where(i => i.CompanyId == companyId)
             .OrderByDescending(i => i.CreatedAt)
             .Take(200)
             .Select(i => new InviteListItemViewModel
@@ -61,13 +61,38 @@ public class InvitesController : Controller
         return View(invites);
     }
 
+    [HttpGet("/admin/users/invites/audit")]
+    public async Task<IActionResult> Audit(CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole("superadmin")) return Forbid();
+        var now = DateTime.UtcNow;
+        var invites = await _db.Set<CompanyInvite>()
+            .AsNoTracking()
+            .OrderByDescending(i => i.CreatedAt)
+            .Take(500)
+            .Select(i => new InviteListItemViewModel
+            {
+                Id = i.Id,
+                Email = i.InvitedEmail,
+                Role = i.Role,
+                Code = i.Code,
+                ExpiresAt = i.ExpiresAt,
+                UsesCount = i.UsesCount,
+                MaxUses = i.MaxUses,
+                IsActive = i.RevokedAt == null && i.ExpiresAt > now && i.UsesCount < i.MaxUses
+            })
+            .ToListAsync(cancellationToken);
+
+        return View("Audit", invites);
+    }
+
     [HttpPost("/admin/users/invites")]
     [HttpPost("/users/invites")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(InviteCreateViewModel model, CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
-        if (!User.IsInRole("superadmin") && companyId <= 0) return Forbid();
+            if (!User.IsInRole("admin") || companyId <= 0) return Forbid();
 
         if (!InviteRoles.Contains(model.Role))
         {
@@ -120,7 +145,7 @@ public class InvitesController : Controller
     public async Task<IActionResult> QuickCode([FromForm] string role, CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
-        if (!User.IsInRole("superadmin") && companyId <= 0) return Forbid();
+            if (!User.IsInRole("admin") || companyId <= 0) return Forbid();
 
         if (!InviteRoles.Contains(role))
         {
@@ -160,11 +185,11 @@ public class InvitesController : Controller
     public async Task<IActionResult> Revoke(int id, CancellationToken cancellationToken)
     {
         var companyId = _currentCompany.CompanyId;
-        if (!User.IsInRole("superadmin") && companyId <= 0) return Forbid();
+            if (!User.IsInRole("admin") || companyId <= 0) return Forbid();
 
         var invite = await _db.Set<CompanyInvite>().FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
         if (invite is null) return NotFound();
-        if (!User.IsInRole("superadmin") && invite.CompanyId != companyId) return NotFound();
+            if (invite.CompanyId != companyId) return NotFound();
 
         invite.RevokedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);

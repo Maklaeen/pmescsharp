@@ -1,0 +1,40 @@
+@model List<PmesCSharp.ViewModels.Invites.InviteListItemViewModel>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Invites Audit";
+}
+
+<div class="bg-[#111114] border border-white/[0.05] rounded-[24px] p-8">
+    <h2 class="text-xl font-extrabold text-white tracking-tight">Invites Audit (superadmin)</h2>
+    <p class="text-sm text-gray-500 mt-1">Read-only list of recent invites across all companies.</p>
+
+    <div class="mt-6 overflow-x-auto">
+        <table class="w-full text-left border-separate border-spacing-y-3">
+            <thead>
+                <tr class="text-[11px] font-bold text-gray-600 uppercase tracking-widest">
+                    <th class="px-4 py-3">Email</th>
+                    <th class="px-4 py-3">Role</th>
+                    <th class="px-4 py-3">Code</th>
+                    <th class="px-4 py-3">Expires</th>
+                    <th class="px-4 py-3">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="5" class="px-4 py-8 text-sm text-gray-500">No invites yet.</td></tr>
+                }
+                @foreach (var i in Model)
+                {
+                    <tr class="bg-white/[0.02] hover:bg-white/[0.05] transition-colors group">
+                        <td class="px-4 py-4 text-sm text-white">@(!string.IsNullOrEmpty(i.Email) ? i.Email : "— code only —")</td>
+                        <td class="px-4 py-4"><span class="text-[10px] font-bold text-orange-500 uppercase tracking-widest bg-orange-500/5 px-2.5 py-1 rounded-lg border border-orange-500/10">@i.Role</span></td>
+                        <td class="px-4 py-4 text-sm text-gray-300 font-mono tracking-widest">@i.Code</td>
+                        <td class="px-4 py-4 text-sm text-gray-400">@i.ExpiresAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</td>
+                        <td class="px-4 py-4 text-sm">@if (i.IsActive) {<span class="text-xs font-bold text-emerald-500">Active</span>} else {<span class="text-xs font-bold text-gray-500">Inactive</span>}</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
