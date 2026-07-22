@@ -142,13 +142,11 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 
-bool migrationSucceeded = false;
 try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
-    migrationSucceeded = true;
 }
 catch (Exception ex)
 {
@@ -156,10 +154,6 @@ catch (Exception ex)
     logger.LogError(ex, "Migration failed.");
 }
 
-if (!migrationSucceeded)
-{
-    return;
-}
 
 try
 {

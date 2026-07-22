@@ -13,6 +13,8 @@ public class ResetPasswordViewModel
 
     [Required]
     [DataType(DataType.Password)]
+    [MinLength(8, ErrorMessage = "Password must be at least 8 characters.")]
+    [RegularExpression(@"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*\W).{8,}$", ErrorMessage = "Password must include uppercase, lowercase, digit and special character.")]
     public string Password { get; set; } = "";
 
     [Required]
